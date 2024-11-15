@@ -119,9 +119,6 @@ async def group_start_cmd(bot, message):
     await message.reply_text(text=f"<b>Hᴇʟʟᴏ 😎 {message.from_user.mention} ✨</b>\n<b><blockquote>ɪ ᴀᴍ ᴘᴏᴡᴇʀꜰᴜʟʟ AUTO REACTION ʙᴏᴛ ᴊᴜꜱᴛ Make Admin in Your Group/Chat to see Magic☜ </blockquote></b>\n<blockquote expandable>For Fun Use These Commands\n◉ /dice\n◉ /arrow\n◉ /goal\n◉ /luck\n◉ /throw\n◉ /bowling\n◉ /tenpins</blockquote>",
         reply_markup=reply_markup)
 
-#@Client.on_message(filters.all)
-#async def send_reaction(bot, message):
-#    await react_msg(bot, message)
 
 #---------------------------Fun.py----------------(((((((
 @Client.on_message(filters.command("dice"))
@@ -313,3 +310,8 @@ def check_winner(board, player):
 # Check if the board is full
 def is_board_full(board):
     return all(cell != "" for cell in board)
+
+
+@Client.on_message(filters.all)
+async def send_reaction(bot, message):
+    await react_msg(bot, message)
