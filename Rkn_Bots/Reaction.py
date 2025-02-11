@@ -9,7 +9,7 @@ from utils import react_msg
 from Script import script
 import requests
 from pyrogram.enums import ChatType
-from repo import pbot
+
 
 
 
