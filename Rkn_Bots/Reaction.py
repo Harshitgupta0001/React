@@ -151,9 +151,6 @@ async def group_start_cmd(bot, message):
 
 @Client.on_message(~filters.bot & ~filters.me & filters.text)
 async def chatbot(_: Client, message: Message):
-    if message.chat.type != ChatType.PRIVATE:
-        if message.reply_to_message.from_user.id != (await client.get_me()).id:
-            return
     if message.text and message.text[0] in ["/", "!", "?", "."]:
         return
     
