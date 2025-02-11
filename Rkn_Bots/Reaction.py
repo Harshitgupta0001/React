@@ -7,6 +7,10 @@ from pyrogram.errors import *
 from pyrogram.types import *
 from utils import react_msg 
 from Script import script
+import requests
+from pyrogram.enums import ChatType
+from repo import pbot
+
 
 
 buttons = [[
@@ -143,6 +147,25 @@ async def group_start_cmd(bot, message):
     await insert(user_id)
     await message.reply_text(text=script.START_TXT.format(message.from_user.mention),
         reply_markup=reply_markup)
+
+
+@Client.on_message(~filters.bot & ~filters.me & filters.text)
+async def chatbot(_: Client, message: Message):
+    if message.chat.type != ChatType.PRIVATE:
+        if not message.reply_to_message:
+            return
+        if message.reply_to_message.from_user.id != (await client.get_me()).id:
+            return
+    if message.text and message.text[0] in ["/", "!", "?", "."]:
+        return
+    
+    response = requests.get(f"https://codesearchdevapi.vercel.app/chat?query={message.text}")
+    
+    if response.status_code == 200:
+        data = response.json().get("data")
+        if data:
+            return await message.reply_text(data)
+    return await message.reply_text("ChatBot Error: Something went wrong. Contact @CodeSearchDev.")
 
 
 #----------------------Fin.py - - - - - - - - - - - - - - - - 
