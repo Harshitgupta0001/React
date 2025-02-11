@@ -149,8 +149,15 @@ async def group_start_cmd(bot, message):
         reply_markup=reply_markup)
 
 
+
+
 @Client.on_message(~filters.bot & ~filters.me & filters.text)
 async def chatbot(_: Client, message: Message):
+    if message.chat.type != ChatType.PRIVATE:
+        if not message.reply_to_message:
+            return
+        if message.reply_to_message.from_user.id != (await Client.get_me()).id:
+            return
     if message.text and message.text[0] in ["/", "!", "?", "."]:
         return
     
@@ -160,8 +167,7 @@ async def chatbot(_: Client, message: Message):
         data = response.json().get("data")
         if data:
             return await message.reply_text(data)
-    return await message.reply_text("ChatBot Error: Something went wrong. Contact @CodeSearchDev.")
-
+    return await message.reply_text("ChatBot Error: Something went wrong. Contact @HGBOTZ_support.")
 
 #----------------------Fin.py - - - - - - - - - - - - - - - - 
 
