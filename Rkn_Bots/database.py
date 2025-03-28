@@ -1,45 +1,77 @@
-# (c) @RknDeveloperr
-# Rkn Developer 
-# Don't Remove Credit 😔
-# Telegram Channel @RknDeveloper & @Rkn_Bots
-# Developer @RknDeveloperr
+#The repo is fully coded and modified by @Dypixx.
+#Please do not sell or remove credits.
 
-import motor.motor_asyncio
-from config import Rkn_Bots
+from typing import Any
+from config import DB_URI, DB_NAME
+from motor import motor_asyncio
+client: motor_asyncio.AsyncIOMotorClient[Any] = motor_asyncio.AsyncIOMotorClient(DB_URI)
+db = client[DB_NAME]
 
-client = motor.motor_asyncio.AsyncIOMotorClient(Rkn_Bots.DB_URL)
-db = client[Rkn_Bots.DB_NAME]
-chnl_ids = db.chnl_ids
-users = db.users
 
-#insert user data
-async def insert(user_id):
-    user_det = {"_id": user_id}
-    try:
-        await users.insert_one(user_det)
-    except:
-        pass
-        
-# Total User
-async def total_user():
-    user = await users.count_documents({})
-    return user
+class data:
+    def __init__(self):
+        self.users = db["users"]
+        self.banned_users = db["banned_users"]
+        self.cache : dict[int, dict[str, Any]] = {}
 
-async def getid():
-    all_users = users.find({})
-    return all_users
+    async def addUser(self, user_id: int, name: str) -> dict[str, Any] | None:
+        try:
+            user: dict[str, Any] = {"user_id": user_id, "name": name}
+            await self.users.insert_one(user)
+            self.cache[user_id] = user      
+            return user
+        except Exception as e:
+            print("Error in addUser: ", e)
+            
 
-async def delete(id):
-    await users.delete_one(id)
-                     
-async def addCap(chnl_id, caption):
-    dets = {"chnl_id": chnl_id, "caption": caption}
-    await chnl_ids.insert_one(dets)
+    async def get_user(self, user_id: int) -> dict[str, Any] | None:
+        try:
+            if user_id in self.cache:
+                return self.cache[user_id]
+            user = await self.users.find_one({"user_id": user_id})
+            return user
+        except Exception as e:
+            print("Error in getUser: ", e)
+            return None
+    
+    async def get_all_users(self) -> list[dict[str, Any]]:
+        try:
+            users : list[dict[str, Any]] = []
+            async for user in self.users.find():
+                users.append(user)
+            return users
+        except Exception as e:
+            print("Error in getAllUsers: ", e)
+            return []
 
-async def updateCap(chnl_id, caption):
-    await chnl_ids.update_one({"chnl_id": chnl_id}, {"$set": {"caption": caption}})
 
-# Rkn Developer 
-# Don't Remove Credit 😔
-# Telegram Channel @RknDeveloper & @Rkn_Bots
-# Developer @RknDeveloperr
+
+    async def ban_user(self, user_id: int, reason: str = None) -> bool:
+        try:
+            ban_data = {
+                "user_id": user_id,
+                "reason": reason
+            }
+            await self.banned_users.insert_one(ban_data)
+            return True
+        except Exception as e:
+            print("Error in banUser: ", e)
+            return False
+
+    async def unban_user(self, user_id: int) -> bool:
+        try:
+            result = await self.banned_users.delete_one({"user_id": user_id})
+            return result.deleted_count > 0
+        except Exception as e:
+            print("Error in unbanUser: ", e)
+            return False
+
+    async def is_user_banned(self, user_id: int) -> bool:
+        try:
+            user = await self.banned_users.find_one({"user_id": user_id})
+            return user is not None
+        except Exception as e:
+            print("Error in isUserBanned: ", e)
+            return False
+
+data = data()
