@@ -1,46 +1,35 @@
-class script(object):
-    START_TXT = """𝗛𝗲𝗹𝗹𝗼 {} 💞
-    ɪ ᴀᴍ sɪᴍᴘʟᴇ ʙᴜᴛ ᴘᴏᴡᴇʀꜰᴜʟʟ ᴀᴜᴛᴏ ʀᴇᴀᴄᴛɪᴏɴ ʙᴏᴛ.
-ᴊᴜsᴛ ᴀᴅᴅ ᴍᴇ ᴀs ᴀ ᴀᴅᴍɪɴ ɪɴ ʏᴏᴜʀ ᴄʜᴀɴɴᴇʟ ᴏʀ ɢʀᴏᴜᴘ ᴛʜᴇɴ sᴇᴇ ᴍʏ ᴘᴏᴡᴇʀ
-<b><blockquote expandable>For Fun Use These Commands
-◉ /dice
-◉ /arrow
-◉ /goal
-◉ /luck
-◉ /throw
-◉ /bowling
-◉ /tenpins</blockquote></b>
-<b><blockquote>Maintained By <a href='https://t.me/hgbotz'>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</a></blockquote></b>"""
+#The repo is fully coded and modified by @Dypixx..
+#Please do not sell or remove credits.
 
-    ABOUT_TXT = """<b><blockquote>⍟───[ MY ᴅᴇᴛᴀɪʟꜱ ]───⍟</blockquote>
+class txt(object):
+  START_TXT = """<b>Hᴇʏ, {}!
+
+I ᴀᴍ ᴀɴ ᴀᴅᴠᴀɴᴄᴇᴅ Iɴsᴛᴀɢʀᴀᴍ ᴘᴏsᴛ ᴀɴᴅ ʀᴇᴇʟs ᴅᴏᴡɴʟᴏᴀᴅᴇʀ ʙᴏᴛ ᴏɴ Tᴇʟᴇɢʀᴀᴍ.
+Fᴏʀ ᴍᴏʀᴇ ɪɴғᴏ, ᴄʟɪᴄᴋ ᴏɴ ʜᴇʟᴘ ✅
+
+<blockquote>𝖬𝖺𝖽𝖾 𝖡𝗒 @HGBOTZ</blockquote></b>"""
+  
+  FORCE_SUBSCRIBE_TEXT = """<b>{}, Tᴏ ᴜsᴇ ᴛʜᴇ ʙᴏᴛ ʏᴏᴜ ᴍᴜsᴛ ᴊᴏɪɴ ᴏᴜʀ ᴄʜᴀɴɴᴇʟ ғɪʀsᴛ. Tʜᴇ ʙᴏᴛ ᴡɪʟʟ ɴᴏᴛ ᴘʀᴏᴄᴇss ᴀɴʏ ʀᴇǫᴜᴇsᴛs ᴡɪᴛʜᴏᴜᴛ ᴊᴏɪɴɪɴɢ.
+
+बॉट का उपयोग करने के लिए आपको पहले हमारे चैनल में Join होना होगा। बॉट बिना शामिल हुए किसी भी Request को Process नहीं करेगा।
+
+AFTER JOIN CLICK</b> /start"""
+  
+  
+  ABOUT_TXT = """<b><blockquote>⍟───[ MY ᴅᴇᴛᴀɪʟꜱ ]───⍟</blockquote>
     
-‣ ᴍʏ ɴᴀᴍᴇ : <a href=https://t.me/Reaction_99bot>Prachi 💞</a>
-‣ ᴍʏ ʙᴇsᴛ ғʀɪᴇɴᴅ : <a href='tg://settings'>ᴛʜɪs ᴘᴇʀsᴏɴ</a> 
-‣ maintenar: <a href='https://t.me/hgbotz'>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</a> 
+‣ Maintained By: <a href='https://t.me/hgbotz'>HGBOTZ</a> 
 ‣ ʟɪʙʀᴀʀʏ : <a href='https://docs.pyrogram.org/'>ᴘʏʀᴏɢʀᴀᴍ</a> 
 ‣ ʟᴀɴɢᴜᴀɢᴇ : <a href='https://www.python.org/download/releases/3.0/'>ᴘʏᴛʜᴏɴ 3</a> 
 ‣ ᴅᴀᴛᴀ ʙᴀsᴇ : <a href='https://www.mongodb.com/'>ᴍᴏɴɢᴏ ᴅʙ</a> 
 ‣ ʙᴏᴛ sᴇʀᴠᴇʀ : <a href='https://heroku.com'>ʜᴇʀᴏᴋᴜ</a> 
 ‣ ʙᴜɪʟᴅ sᴛᴀᴛᴜs : ᴠ2.7.1 [sᴛᴀʙʟᴇ]></b>
 """
+  
+  HELP_TXT = """<b>Tᴏ ᴜsᴇ ᴛʜɪs ʙᴏᴛ, ʏᴏᴜ ɴᴇᴇᴅ ᴀ ʀᴇᴇʟ ᴏʀ ᴘᴏsᴛ ʟɪɴᴋ.
+  
+Jᴜsᴛ sᴇɴᴅ ᴛʜᴇ ʀᴇᴇʟ ᴏʀ ᴘᴏsᴛ ʟɪɴᴋ, ᴀɴᴅ ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ ᴘʀᴏᴄᴇss ɪᴛ, ᴅᴏᴡɴʟᴏᴀᴅ ɪᴛ ᴛᴏ ᴛʜᴇ sᴇʀᴠᴇʀ, ᴀɴᴅ ᴛʜᴇɴ sᴇɴᴅ ɪᴛ ᴛᴏ ʏᴏᴜ ᴅɪʀᴇᴄᴛʟʏ.
 
-    HELP_TXT = """<b>𝙱𝚞𝚍𝚍𝚢 𝙽𝚘𝚝 𝙰 𝙷𝚊𝚛𝚍 𝙿𝚛𝚘𝚌𝚎𝚜𝚜 😂
-𝙸𝚝 𝙹𝚞𝚜𝚝 𝚂𝚒𝚖𝚙𝚕𝚎 𝚁𝚎𝚊𝚌𝚝𝚒𝚘𝚗 𝙱𝚘𝚝 𝚠𝚒𝚝𝚑 𝚂𝚘𝚖𝚎 𝚃𝚒𝚖𝚎𝚙𝚊𝚊𝚜 𝙶𝚊𝚖𝚎
-𝙾𝙽𝙻𝚈 𝙼𝚊𝚔𝚎 𝙼𝚎 𝙰𝚍𝚖𝚒𝚗 𝙸𝚗 𝚈𝚘𝚞𝚛 𝙶𝚛𝚘𝚞𝚙 𝙾𝚛 𝙲𝚑𝚊𝚗𝚗𝚎𝚕 𝙵𝚘𝚛 𝙼𝚊𝚐𝚒𝚌𝚊𝚕 𝚁𝚎𝚊𝚌𝚝𝚒𝚘𝚗𝚜 💞
-𝙾𝚛 𝙳𝚘
-/𝚍𝚒𝚌𝚎  
-/𝚝𝚑𝚛𝚘𝚠 ....
-𝚎𝚝𝚌 𝚖𝚘𝚛𝚎 𝚌𝚖𝚗𝚍𝚜 𝚠𝚑𝚒𝚌𝚑 𝚜𝚑𝚘𝚠 𝚞 𝚒𝚗 𝚜𝚝𝚊𝚛 𝚝𝚎𝚡𝚝 𝚊𝚗𝚍 𝚎𝚗𝚓𝚘𝚢</b>
-<b><blockquote>Maintained By <a href='https://t.me/hgbotz'>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</a></blockquote></b>"""
+Aғᴛᴇʀ ᴛʜᴀᴛ ᴘʀᴏᴄᴇss, ᴛʜᴇ ʙᴏᴛ ᴡɪʟʟ ɢɪᴠᴇ ʏᴏᴜ ᴀ ғʟᴏᴏᴅ ᴡᴀʀɴɪɴɢ. Yᴏᴜ sʜᴏᴜʟᴅ ᴡᴀɪᴛ ғᴏʀ few ᴍɪɴᴜᴛᴇs; ᴀғᴛᴇʀ few ᴍɪɴᴜᴛᴇs, ʏᴏᴜ ᴄᴀɴ ᴜsᴇ ᴛʜɪs ʙᴏᴛ ᴀɢᴀɪɴ. 
 
-    HOME_TXT = """ɪ ᴀᴍ sɪᴍᴘʟᴇ ʙᴜᴛ ᴘᴏᴡᴇʀꜰᴜʟʟ ᴀᴜᴛᴏ ʀᴇᴀᴄᴛɪᴏɴ ʙᴏᴛ.
-ᴊᴜsᴛ ᴀᴅᴅ ᴍᴇ ᴀs ᴀ ᴀᴅᴍɪɴ ɪɴ ʏᴏᴜʀ ᴄʜᴀɴɴᴇʟ ᴏʀ ɢʀᴏᴜᴘ ᴛʜᴇɴ sᴇᴇ ᴍʏ ᴘᴏᴡᴇʀ
-<b><blockquote expandable>For Fun Use These Commands
-◉ /dice
-◉ /arrow
-◉ /goal
-◉ /luck
-◉ /throw
-◉ /bowling
-◉ /tenpins</blockquote></b>
-<b><blockquote>Maintained By <a href='https://t.me/hgbotz'>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</a></blockquote></b>"""
+<blockquote>Iғ ᴀɴʏ ɪssᴜᴇs ᴄᴏᴍᴇ ᴜᴘ, ᴄᴏɴᴛᴀᴄᴛ @HGBOTZ_support</blockquote></b>"""
