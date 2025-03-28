@@ -7,7 +7,6 @@
 import re, time, os
 from os import environ
 
-CRIC_API_KEY = "79261425-9b54-4e25-850c-c13b6e90b101"
 
 id_pattern = re.compile(r'^.\d+$')
 
