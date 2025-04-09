@@ -10,7 +10,7 @@ from Script import script
 
 # In-memory game storage
 games = {}
-
+pending_challenges = {}
 
 buttons = [[
         InlineKeyboardButton('✇ Uᴘᴅᴀᴛᴇs ✇', url="https://t.me/HGBOTZ"),
@@ -589,6 +589,215 @@ async def make_move(client, cb: CallbackQuery):
                 pass
 
             games.pop(game_id, None)
+
+
+
+
+
+ 
+ROWS, COLS = 6, 7
+
+def generate_connect_board(board, game_id, include_quit=True):
+    buttons = []
+    for r in board:
+        row = [InlineKeyboardButton("🔴" if c == "X" else "🟡" if c == "O" else "⚪" for c in r)]
+        buttons.append(row)
+
+    control_row = []
+    for col in range(COLS):
+        control_row.append(InlineKeyboardButton(str(col + 1), callback_data=f"drop|{game_id}|{col}"))
+    buttons.append(control_row)
+
+    if include_quit:
+        buttons.append([InlineKeyboardButton("❌ Quit", callback_data=f"quit|{game_id}")])
+
+    return InlineKeyboardMarkup(buttons)
+
+def check_connect_winner(board, symbol):
+    for r in range(ROWS):
+        for c in range(COLS - 3):
+            if all(board[r][c+i] == symbol for i in range(4)):
+                return True
+    for r in range(ROWS - 3):
+        for c in range(COLS):
+            if all(board[r+i][c] == symbol for i in range(4)):
+                return True
+    for r in range(3, ROWS):
+        for c in range(COLS - 3):
+            if all(board[r-i][c+i] == symbol for i in range(4)):
+                return True
+    for r in range(ROWS - 3):
+        for c in range(COLS - 3):
+            if all(board[r+i][c+i] == symbol for i in range(4)):
+                return True
+    return False
+
+def make_move(board, col, symbol):
+    for row in reversed(board):
+        if row[col] == " ":
+            row[col] = symbol
+            return True
+    return False
+
+def is_full(board):
+    return all(cell != " " for row in board for cell in row)
+
+@Client.on_message(filters.command("connect4"))
+async def connect_four(client, message: Message):
+    user1 = message.from_user.id
+    chat_id = message.chat.id
+
+    if message.chat.type == "private" or len(message.command) == 1:
+        game_id = message.id
+        board = [[" "] * COLS for _ in range(ROWS)]
+        games[game_id] = {
+            "chat_id": chat_id, "player_x": user1, "player_o": 0,
+            "turn": user1, "vs_bot": True, "board": board
+        }
+        sent = await message.reply(
+            f"**You vs Bot**\n**Turn:** {message.from_user.mention}",
+            reply_markup=generate_connect_board(board, game_id)
+        )
+        games[game_id]["message"] = sent
+
+    elif len(message.command) == 2:
+        try:
+            user2 = (await client.get_users(message.command[1])).id
+            if user1 == user2:
+                return await message.reply("You can't challenge yourself.")
+
+            challenge_id = message.id
+            pending_challenges[challenge_id] = {
+                "chat_id": chat_id,
+                "challenger": user1,
+                "opponent": user2
+            }
+
+            await message.reply(
+                f"{message.from_user.mention} challenged {(await client.get_users(user2)).mention} to Connect Four!",
+                reply_markup=InlineKeyboardMarkup([
+                    [
+                        InlineKeyboardButton("✅ Accept", callback_data=f"accept|{challenge_id}"),
+                        InlineKeyboardButton("❌ Decline", callback_data=f"decline|{challenge_id}")
+                    ]
+                ])
+            )
+
+        except:
+            await message.reply("Invalid username.")
+    else:
+        await message.reply("Usage: `/connect4` or `/connect4 @username`")
+
+@Client.on_callback_query(filters.regex("^accept"))
+async def accept_challenge(client, cb: CallbackQuery):
+    _, challenge_id = cb.data.split("|")
+    challenge_id = int(challenge_id)
+    challenge = pending_challenges.get(challenge_id)
+
+    if not challenge:
+        return await cb.answer("Challenge expired or not found.", show_alert=True)
+
+    if cb.from_user.id != challenge["opponent"]:
+        return await cb.answer("Only the challenged player can accept.", show_alert=True)
+
+    del pending_challenges[challenge_id]
+    board = [[" "] * COLS for _ in range(ROWS)]
+    game_id = challenge_id
+
+    games[game_id] = {
+        "chat_id": challenge["chat_id"],
+        "player_x": challenge["challenger"],
+        "player_o": challenge["opponent"],
+        "turn": challenge["challenger"],
+        "vs_bot": False,
+        "board": board
+    }
+
+    p1 = await client.get_users(challenge["challenger"])
+    p2 = await client.get_users(challenge["opponent"])
+    msg = await cb.message.reply(
+        f"{p1.mention} vs {p2.mention}\n**Turn:** {p1.mention}",
+        reply_markup=generate_connect_board(board, game_id)
+    )
+    games[game_id]["message"] = msg
+    await cb.message.delete()
+
+@Client.on_callback_query(filters.regex("^decline"))
+async def decline_challenge(client, cb: CallbackQuery):
+    _, challenge_id = cb.data.split("|")
+    challenge_id = int(challenge_id)
+    challenge = pending_challenges.get(challenge_id)
+
+    if not challenge:
+        return await cb.answer("Challenge expired.", show_alert=True)
+
+    if cb.from_user.id != challenge["opponent"]:
+        return await cb.answer("Only the challenged player can decline.", show_alert=True)
+
+    del pending_challenges[challenge_id]
+    await cb.message.edit_text("Challenge declined.")
+
+@Client.on_callback_query(filters.regex("^drop"))
+async def connect4_move(client, cb: CallbackQuery):
+    _, game_id, col = cb.data.split("|")
+    game_id = int(game_id)
+    col = int(col)
+    user = cb.from_user
+    game = games.get(game_id)
+
+    if not game:
+        return await cb.answer("Game not found!", show_alert=True)
+
+    if game["turn"] != user.id:
+        return await cb.answer("Not your turn!", show_alert=True)
+
+    board = game["board"]
+    symbol = "X" if user.id == game["player_x"] else "O"
+    if not make_move(board, col, symbol):
+        return await cb.answer("Column full!", show_alert=True)
+
+    if check_connect_winner(board, symbol):
+        await cb.message.edit_text(f"**Winner:** {user.mention}", reply_markup=generate_connect_board(board, game_id, False))
+        games.pop(game_id, None)
+        return
+
+    if is_full(board):
+        await cb.message.edit_text("**It's a draw!**", reply_markup=generate_connect_board(board, game_id, False))
+        games.pop(game_id, None)
+        return
+
+    if game["vs_bot"]:
+        game["turn"] = 0
+        for i in range(COLS):
+            if make_move(board, i, "O"):
+                break
+        if check_connect_winner(board, "O"):
+            await cb.message.edit_text("**Bot wins!**", reply_markup=generate_connect_board(board, game_id, False))
+            games.pop(game_id, None)
+            return
+        game["turn"] = game["player_x"]
+        turn_user = cb.from_user.mention
+    else:
+        game["turn"] = game["player_o"] if user.id == game["player_x"] else game["player_x"]
+        turn_user = (await client.get_users(game["turn"])).mention
+
+    await cb.message.edit_text(f"**Turn:** {turn_user}", reply_markup=generate_connect_board(board, game_id))
+
+@Client.on_callback_query(filters.regex("^quit"))
+async def connect4_quit(client, cb: CallbackQuery):
+    _, game_id = cb.data.split("|")
+    game_id = int(game_id)
+    game = games.pop(game_id, None)
+    if not game:
+        return await cb.answer("Game not found!", show_alert=True)
+
+    opponent_id = game["player_o"] if cb.from_user.id == game["player_x"] else game["player_x"]
+    try:
+        opponent = await client.get_users(opponent_id)
+        msg = f"{cb.from_user.mention} quit the game.\n**Winner:** {opponent.mention}"
+    except:
+        msg = f"{cb.from_user.mention} quit the game.\nOpponent wins!"
+    await cb.message.edit_text(msg)
 
 #--------- react.py-------
 
