@@ -309,36 +309,22 @@ async def start_game(client, message: Message):
             user2 = (await client.get_users(message.command[1])).id
             if user1 == user2:
                 return await message.reply("You can't play with yourself.")
-
-            import uuid
-            game_id = uuid.uuid4().hex
-            board = [" "] * 9
-
             games[game_id] = {
-                "chat_id": chat_id,
-                "player_x": user1,
-                "player_o": user2,
-                "turn": user1,
-                "vs_bot": False,
-                "board": board,
-                "status": "pending"
+                "chat_id": chat_id, "player_x": user1, "player_o": user2,
+                "turn": user1, "vs_bot": False, "board": board
             }
-
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("✅ Accept", callback_data=f"accept|{game_id}"),
-                    InlineKeyboardButton("❌ Decline", callback_data=f"decline|{game_id}")
-                ]
-            ])
-
-            await message.reply(
-                f"{message.command[1]}, you’ve been challenged by {message.from_user.mention} to a game of **Tic Tac Toe**!",
-                reply_markup=keyboard
+            sent = await message.reply(
+                f"{message.from_user.mention} vs {message.command[1]}\n**Turn:** {message.from_user.mention}",
+                reply_markup=generate_board(board, game_id)
             )
+            games[game_id]["message"] = sent
+            asyncio.create_task(start_timeout(client, game_id))
         except Exception:
             await message.reply("Invalid username or user not found.")
     else:
         await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
+
+
 # Handle move
 @Client.on_callback_query(filters.regex("^move"))
 async def handle_move(client, cb: CallbackQuery):
@@ -400,43 +386,6 @@ async def handle_move(client, cb: CallbackQuery):
     )
     asyncio.create_task(start_timeout(client, game_id))
 
-#acceot or decline 
-
-@Client.on_callback_query(filters.regex("^accept"))
-async def handle_accept(client, cb: CallbackQuery):
-    _, challenge_id = cb.data.split("|")
-    game = games.get(challenge_id)
-    
-    if not game:
-        return await cb.answer("Challenge not found.", show_alert=True)
-    if cb.from_user.id != game["player_o"]:
-        return await cb.answer("This challenge is not for you.", show_alert=True)
-
-    # Start the game
-    board = [" "] * 9
-    game.update({
-        "board": board,
-        "turn": game["player_x"],
-        "vs_bot": False,
-        "status": "ongoing"
-    })
-
-    await cb.message.edit(
-        f"{cb.from_user.mention} accepted the challenge!\n\n**Turn:** {(await client.get_users(game['turn'])).mention}",
-        reply_markup=generate_board(board, challenge_id)
-    )
-
-@Client.on_callback_query(filters.regex("^decline"))
-async def handle_decline(client, cb: CallbackQuery):
-    _, challenge_id = cb.data.split("|")
-    game = games.pop(challenge_id, None)
-
-    if not game:
-        return await cb.answer("Challenge not found.", show_alert=True)
-    if cb.from_user.id != game["player_o"]:
-        return await cb.answer("This challenge is not for you.", show_alert=True)
-
-    await cb.message.edit(f"{cb.from_user.mention} declined the challenge.")
 
 # Quit game
 @Client.on_callback_query(filters.regex("^quit"))
