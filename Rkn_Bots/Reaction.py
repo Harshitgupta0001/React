@@ -4,7 +4,7 @@ from config import Rkn_Bots, AUTH_CHANNEL
 import asyncio, re, time, sys, random
 from .database import total_user, getid, delete, addCap, updateCap, insert, chnl_ids
 from pyrogram.errors import *
-from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
+from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from utils import react_msg 
 from Script import script
 
@@ -196,131 +196,113 @@ async def send_message_to_channel(bot, message):
         await message.reply_text("**Usage:** /msg <channel_id> <loop_time> <message>")
         return
 
-    # Extract channel ID, loop time, and message from the command
-    channel_id = message.command[1]
-    loop_time = int(message.command[2])  # Number of times to send the message
-    msg_text = " ".join(message.command[3:])  # The message to send
-
-    try:
-        # Loop and send the message
-        for i in range(loop_time):
-            await bot.send_message(int(channel_id), msg_text)
-            await asyncio.sleep(1)  # Add a small delay to avoid spamming
-        await message.reply_text(f"Message sent {loop_time} times to channel/group {channel_id}!")
-    except Exception as e:
-        await message.reply_text(f"Failed to send message to channel/group {channel_id}. Error: {str(e)}")
 
 
 
-# Store game state: {(chat_id, user_id): {...}}
+# In-memory game storage
 games = {}
 
-def get_board_markup(board, chat_id, user1, user2):
+# Generate game board
+def generate_board(board, chat_id, player_x, player_o):
     buttons = []
     for i in range(3):
         row = []
         for j in range(3):
             index = i * 3 + j
-            text = board[index]
-            if text == " ":
-                callback = f"move|{chat_id}|{index}|{user1}|{user2}"
-                row.append(InlineKeyboardButton("➖", callback_data=callback))
+            cell = board[index]
+            if cell == " ":
+                row.append(InlineKeyboardButton("➖", callback_data=f"move|{chat_id}|{index}|{player_x}|{player_o}"))
             else:
-                row.append(InlineKeyboardButton(text, callback_data="ignore"))
+                row.append(InlineKeyboardButton(cell, callback_data="ignore"))
         buttons.append(row)
     return InlineKeyboardMarkup(buttons)
 
+# Check win or tie
 def check_winner(board):
-    win_positions = [(0,1,2),(3,4,5),(6,7,8),
-                     (0,3,6),(1,4,7),(2,5,8),
-                     (0,4,8),(2,4,6)]
-    for a,b,c in win_positions:
-        if board[a] == board[b] == board[c] != " ":
-            return board[a]
+    combos = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
+    for x, y, z in combos:
+        if board[x] == board[y] == board[z] and board[x] != " ":
+            return board[x]
     if " " not in board:
         return "tie"
     return None
 
+# Start game
 @Client.on_message(filters.command("tictactoe"))
-async def start_tictactoe(client, message):
-    args = message.command
+async def start_game(client, message: Message):
     user1 = message.from_user.id
     chat_id = message.chat.id
     board = [" "] * 9
 
-    if len(args) == 1:
-        # vs bot
+    if message.chat.type == "private" or len(message.command) == 1:
+        # vs Bot
         games[(chat_id, user1)] = {"board": board, "turn": user1, "vs_bot": True}
-        await message.reply("You vs Bot. You're X!", reply_markup=get_board_markup(board, chat_id, user1, 0))
-    elif len(args) == 2:
-        # vs another user
+        await message.reply("You vs Bot\nYou are X", reply_markup=generate_board(board, chat_id, user1, 0))
+    elif len(message.command) == 2:
         try:
-            user2 = int((await client.get_users(args[1])).id)
+            user2 = (await client.get_users(message.command[1])).id
             if user1 == user2:
-                return await message.reply("You can't play against yourself.")
-            games[(chat_id, user1)] = {"board": board, "turn": user1, "vs_bot": False, "user2": user2}
-            await message.reply(f"{message.from_user.mention} vs {args[1]}!", reply_markup=get_board_markup(board, chat_id, user1, user2))
-        except:
-            await message.reply("Invalid user. Try: `/tictactoe @username`")
+                return await message.reply("You can't play with yourself.")
+            games[(chat_id, user1)] = {"board": board, "turn": user1, "vs_bot": False, "opponent": user2}
+            await message.reply(f"{message.from_user.mention} vs {message.command[1]}", reply_markup=generate_board(board, chat_id, user1, user2))
+        except Exception as e:
+            await message.reply("Invalid username or user not found.")
     else:
-        await message.reply("Usage: `/tictactoe` or `/tictactoe @username`")
+        await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
 
-@Client.on_callback_query(filters.regex("move"))
-async def handle_move(client, callback_query: CallbackQuery):
-    _, chat_id, index, user1, user2 = callback_query.data.split("|")
+# Handle moves
+@Client.on_callback_query(filters.regex("^move"))
+async def handle_move(client, cb: CallbackQuery):
+    _, chat_id, index, player_x, player_o = cb.data.split("|")
     chat_id = int(chat_id)
     index = int(index)
-    user1 = int(user1)
-    user2 = int(user2)
+    player_x = int(player_x)
+    player_o = int(player_o)
+    user_id = cb.from_user.id
 
-    user_id = callback_query.from_user.id
-    key = (chat_id, user1)
-    game = games.get(key)
-
+    game = games.get((chat_id, player_x))
     if not game:
-        return await callback_query.answer("Game not found or expired!", show_alert=True)
+        return await cb.answer("Game not found or expired.", show_alert=True)
 
     board = game["board"]
     turn = game["turn"]
-    is_bot_game = game.get("vs_bot", False)
+    is_bot = game["vs_bot"]
 
-    if user_id != turn:
-        return await callback_query.answer("It's not your turn!", show_alert=True)
+    if turn != user_id:
+        return await cb.answer("Not your turn!", show_alert=True)
 
     if board[index] != " ":
-        return await callback_query.answer("Invalid move!", show_alert=True)
+        return await cb.answer("Already taken!", show_alert=True)
 
-    mark = "X" if turn == user1 else "O"
+    mark = "X" if user_id == player_x else "O"
     board[index] = mark
-    winner = check_winner(board)
 
+    winner = check_winner(board)
     if winner:
-        text = "It's a tie!" if winner == "tie" else f"**{callback_query.from_user.mention} wins!**"
-        await callback_query.message.edit(text=text, reply_markup=get_board_markup(board, chat_id, user1, user2))
-        del games[key]
+        text = "It's a tie!" if winner == "tie" else f"**{cb.from_user.first_name} wins!**"
+        await cb.message.edit_text(text, reply_markup=generate_board(board, chat_id, player_x, player_o))
+        games.pop((chat_id, player_x), None)
         return
 
-    if is_bot_game:
-        empty = [i for i, x in enumerate(board) if x == " "]
-        if empty:
-            bot_move = random.choice(empty)
-            board[bot_move] = "O"
-            winner = check_winner(board)
-            if winner:
-                text = "It's a tie!" if winner == "tie" else "**Bot wins!**"
-                await callback_query.message.edit(text=text, reply_markup=get_board_markup(board, chat_id, user1, user2))
-                del games[key]
-                return
+    if is_bot:
+        game["turn"] = 0
+        bot_move = random.choice([i for i, c in enumerate(board) if c == " "])
+        board[bot_move] = "O"
+        winner = check_winner(board)
+        if winner:
+            text = "It's a tie!" if winner == "tie" else "**Bot wins!**"
+            await cb.message.edit_text(text, reply_markup=generate_board(board, chat_id, player_x, player_o))
+            games.pop((chat_id, player_x), None)
+            return
+        game["turn"] = player_x
+    else:
+        game["turn"] = player_o if turn == player_x else player_x
 
-    # Swap turn
-    game["turn"] = user2 if turn == user1 else user1
-    await callback_query.message.edit(reply_markup=get_board_markup(board, chat_id, user1, user2))
+    await cb.message.edit_reply_markup(reply_markup=generate_board(board, chat_id, player_x, player_o))
 
-@Client.on_callback_query(filters.regex("ignore"))
-async def ignore_callback(_, callback_query):
-    await callback_query.answer()
-
-
+@Client.on_callback_query(filters.regex("^ignore"))
+async def ignore(cb: CallbackQuery):
+    await cb.answer()
                 
 
 #--------- react.py-------
