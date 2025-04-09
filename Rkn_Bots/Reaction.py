@@ -228,6 +228,47 @@ def check_winner(board):
         return "tie"
     return None
 
+def best_move(board):
+    best_score = -float("inf")
+    move = None
+    for i in range(9):
+        if board[i] == " ":
+            board[i] = "O"
+            score = minimax(board, 0, False)
+            board[i] = " "
+            if score > best_score:
+                best_score = score
+                move = i
+    return move
+
+def minimax(board, depth, is_maximizing):
+    winner = check_winner(board)
+    if winner == "O":
+        return 1
+    elif winner == "X":
+        return -1
+    elif " " not in board:
+        return 0
+
+    if is_maximizing:
+        best_score = -float("inf")
+        for i in range(9):
+            if board[i] == " ":
+                board[i] = "O"
+                score = minimax(board, depth + 1, False)
+                board[i] = " "
+                best_score = max(score, best_score)
+        return best_score
+    else:
+        best_score = float("inf")
+        for i in range(9):
+            if board[i] == " ":
+                board[i] = "X"
+                score = minimax(board, depth + 1, True)
+                board[i] = " "
+                best_score = min(score, best_score)
+        return best_score
+
 # Timeout logic
 async def start_timeout(client, game_id, timeout=60):
     await asyncio.sleep(timeout)
@@ -325,7 +366,7 @@ async def handle_move(client, cb: CallbackQuery):
 
     if is_bot:
         game["turn"] = 0
-        bot_move = random.choice([i for i, c in enumerate(board) if c == " "])
+        bot_move = best_move(board)
         board[bot_move] = "O"
         winner = check_winner(board)
         if winner:
@@ -343,7 +384,6 @@ async def handle_move(client, cb: CallbackQuery):
         reply_markup=generate_board(board, game_id)
     )
     asyncio.create_task(start_timeout(client, game_id))
-
 # Quit game
 @Client.on_callback_query(filters.regex("^quit"))
 async def quit_game(client, cb: CallbackQuery):
