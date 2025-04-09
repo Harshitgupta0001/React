@@ -2,7 +2,7 @@ import requests
 from pyrogram import Client, filters, errors, types
 from config import Rkn_Bots, AUTH_CHANNEL
 import asyncio, re, time, sys, random
-from .database import total_user, getid, delete, addCap, updateCap, insert, chnl_ids, save_game, get_game, delete_game
+from .database import total_user, getid, delete, addCap, updateCap, insert, chnl_ids
 from pyrogram.errors import *
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from utils import react_msg 
