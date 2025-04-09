@@ -208,13 +208,16 @@ def generate_board(board, game_id, include_quit=True):
         for j in range(3):
             index = i * 3 + j
             cell = board[index]
+            display = {"X": "❌", "O": "⭕", " ": "➖"}[cell]
             if cell == " ":
-                row.append(InlineKeyboardButton("➖", callback_data=f"move|{game_id}|{index}"))
+                row.append(InlineKeyboardButton(display, callback_data=f"move|{game_id}|{index}"))
             else:
-                row.append(InlineKeyboardButton(cell, callback_data="ignore"))
+                row.append(InlineKeyboardButton(display, callback_data="ignore"))
         buttons.append(row)
+
     if include_quit:
         buttons.append([InlineKeyboardButton("❌ Quit", callback_data=f"quit|{game_id}")])
+
     return InlineKeyboardMarkup(buttons)
 
 # Check winner or tie
