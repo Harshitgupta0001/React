@@ -8,6 +8,9 @@ from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, 
 from utils import react_msg 
 from Script import script
 
+# In-memory game storage
+games = {}
+
 
 buttons = [[
         InlineKeyboardButton('✇ Uᴘᴅᴀᴛᴇs ✇', url="https://t.me/HGBOTZ"),
@@ -199,8 +202,7 @@ async def send_message_to_channel(bot, message):
 
 
 
-# In-memory game storage
-games = {}
+
 
 # Generate game board
 def generate_board(board, game_id, include_quit=True):
@@ -421,6 +423,149 @@ async def quit_game(client, cb: CallbackQuery):
 async def ignore(cb: CallbackQuery):
     await cb.answer()
 
+
+
+
+
+CHOICES = ["🪨 Rock", "📄 Paper", "✂️ Scissors"]
+
+def rps_keyboard(game_id, user_id):
+    buttons = [
+        [InlineKeyboardButton(choice, callback_data=f"rps_move|{game_id}|{user_id}|{i}")]
+        for i, choice in enumerate(CHOICES)
+    ]
+    buttons.append([InlineKeyboardButton("❌ Quit", callback_data=f"rps_quit|{game_id}")])
+    return InlineKeyboardMarkup(buttons)
+
+def result(p1_choice, p2_choice):
+    if p1_choice == p2_choice:
+        return "tie"
+    if (p1_choice == 0 and p2_choice == 2) or (p1_choice == 1 and p2_choice == 0) or (p1_choice == 2 and p2_choice == 1):
+        return "p1"
+    return "p2"
+
+@Client.on_message(filters.command("rps"))
+async def rps_command(client, message: Message):
+    user1 = message.from_user.id
+    chat_id = message.chat.id
+    game_id = message.id  # Use integer ID
+
+    if len(message.command) == 1 or message.chat.type == "private":
+        # PvBot Mode
+        games[game_id] = {
+            "player1": user1,
+            "player2": 0,
+            "move1": None,
+            "move2": None,
+            "vs_bot": True,
+            "message": None
+        }
+        msg = await message.reply("**You vs Bot!**\nChoose your move:", reply_markup=rps_keyboard(game_id, user1))
+        games[game_id]["message"] = msg
+    elif len(message.command) == 2:
+        try:
+            user2 = (await client.get_users(message.command[1])).id
+            if user1 == user2:
+                return await message.reply("You can't challenge yourself.")
+            games[game_id] = {
+                "player1": user1,
+                "player2": user2,
+                "move1": None,
+                "move2": None,
+                "vs_bot": False,
+                "status": "pending",
+                "message": None
+            }
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ Accept", callback_data=f"rps_accept|{game_id}"),
+                    InlineKeyboardButton("❌ Decline", callback_data=f"rps_decline|{game_id}")
+                ]
+            ])
+            await message.reply(
+                f"{message.command[1]}, you’ve been challenged by {message.from_user.mention} to a game of Rock Paper Scissors!",
+                reply_markup=keyboard
+            )
+        except:
+            await message.reply("Invalid username.")
+
+@Client.on_callback_query(filters.regex("^rps_accept"))
+async def accept_game(client, cb: CallbackQuery):
+    _, game_id = cb.data.split("|")
+    game_id = int(game_id)
+    game = games.get(game_id)
+    if not game or cb.from_user.id != game["player2"]:
+        return await cb.answer("You can't accept this game.", show_alert=True)
+
+    msg = await cb.message.edit_text(
+        f"{cb.from_user.mention} accepted the challenge!\nBoth players, make your move:",
+        reply_markup=rps_keyboard(game_id, game["player1"])
+    )
+    games[game_id]["message"] = msg
+
+@Client.on_callback_query(filters.regex("^rps_decline"))
+async def decline_game(client, cb: CallbackQuery):
+    _, game_id = cb.data.split("|")
+    game_id = int(game_id)
+    game = games.pop(game_id, None)
+    if game:
+        await cb.message.edit_text("Challenge was declined.")
+
+@Client.on_callback_query(filters.regex("^rps_quit"))
+async def quit_game(client, cb: CallbackQuery):
+    _, game_id = cb.data.split("|")
+    game_id = int(game_id)
+    game = games.pop(game_id, None)
+    if game:
+        await cb.message.edit_text("Game was quit.")
+
+@Client.on_callback_query(filters.regex("^rps_move"))
+async def handle_move(client, cb: CallbackQuery):
+    _, game_id, user_id, move = cb.data.split("|")
+    game_id = int(game_id)
+    user_id = int(user_id)
+    move = int(move)
+
+    game = games.get(game_id)
+    if not game or user_id != cb.from_user.id:
+        return await cb.answer("Invalid move or not your game.", show_alert=True)
+
+    if user_id == game["player1"]:
+        if game["move1"] is not None:
+            return await cb.answer("Move already made.")
+        game["move1"] = move
+    elif user_id == game["player2"]:
+        if game["move2"] is not None:
+            return await cb.answer("Move already made.")
+        game["move2"] = move
+
+    await cb.answer("Move selected.")
+
+    if game["vs_bot"]:
+        game["move2"] = random.randint(0, 2)
+        winner = result(game["move1"], game["move2"])
+        if winner == "tie":
+            text = "🤝 It's a Tie!"
+        elif winner == "p1":
+            text = f"**You Win!** {CHOICES[game['move1']]} beats {CHOICES[game['move2']]}"
+        else:
+            text = f"**Bot Wins!** {CHOICES[game['move2']]} beats {CHOICES[game['move1']]}"
+        await cb.message.edit_text(text)
+        games.pop(game_id, None)
+    elif game["move1"] is not None and game["move2"] is not None:
+        winner = result(game["move1"], game["move2"])
+        p1_name = (await client.get_users(game["player1"])).mention
+        p2_name = (await client.get_users(game["player2"])).mention
+
+        if winner == "tie":
+            text = f"🤝 It's a Tie!\n{CHOICES[game['move1']]} vs {CHOICES[game['move2']]}"
+        elif winner == "p1":
+            text = f"🏆 {p1_name} wins!\n{CHOICES[game['move1']]} beats {CHOICES[game['move2']]}"
+        else:
+            text = f"🏆 {p2_name} wins!\n{CHOICES[game['move2']]} beats {CHOICES[game['move1']]}"
+
+        await cb.message.edit_text(text)
+        games.pop(game_id, None)
 
 
 #--------- react.py-------
