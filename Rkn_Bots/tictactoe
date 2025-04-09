@@ -1,6 +1,6 @@
 from pyrogram import Client, filters
 from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
-import random
+import random, asyncio
 
 # In-memory game storage
 games = {}
@@ -39,7 +39,7 @@ def check_winner(board):
 async def start_timeout(client, game_id, timeout=60):
     await asyncio.sleep(timeout)
     game = games.get(game_id)
-    if game and not game.get("winner"):
+    if game and not game.get("winner") and game.get("status") == "playing":
         turn = game["turn"]
         opponent_id = game["player_o"] if turn == game["player_x"] else game["player_x"]
         try:
@@ -50,6 +50,7 @@ async def start_timeout(client, game_id, timeout=60):
         await game["message"].edit_text(msg)
         games.pop(game_id, None)
 
+# Bot move
 def best_move(board):
     best_score = -float("inf")
     move = None
@@ -90,7 +91,7 @@ def minimax(board, depth, is_maximizing):
                 board[i] = " "
                 best_score = min(score, best_score)
         return best_score
-            
+
 # Start game
 @Client.on_message(filters.command("tictactoe"))
 async def start_game(client, message: Message):
@@ -102,7 +103,8 @@ async def start_game(client, message: Message):
     if message.chat.type == "private" or len(message.command) == 1:
         games[game_id] = {
             "chat_id": chat_id, "player_x": user1, "player_o": 0,
-            "turn": user1, "vs_bot": True, "board": board
+            "turn": user1, "vs_bot": True, "board": board,
+            "status": "playing"
         }
         sent = await message.reply(
             f"**You vs Bot**\n**Turn:** {message.from_user.mention}",
@@ -113,26 +115,66 @@ async def start_game(client, message: Message):
 
     elif len(message.command) == 2:
         try:
-            user2 = (await client.get_users(message.command[1])).id
+            opponent = await client.get_users(message.command[1])
+            user2 = opponent.id
             if user1 == user2:
                 return await message.reply("You can't play with yourself.")
+            
             games[game_id] = {
-                "chat_id": chat_id, "player_x": user1, "player_o": user2,
-                "turn": user1, "vs_bot": False, "board": board
+                "chat_id": chat_id,
+                "player_x": user1,
+                "player_o": user2,
+                "status": "pending"
             }
-            sent = await message.reply(
-                f"{message.from_user.mention} vs {message.command[1]}\n**Turn:** {message.from_user.mention}",
-                reply_markup=generate_board(board, game_id)
+            await message.reply(
+                f"{message.from_user.mention} challenged {opponent.mention} to a game of Tic Tac Toe!",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("✅ Accept", callback_data=f"accept|{game_id}"),
+                    InlineKeyboardButton("❌ Decline", callback_data=f"decline|{game_id}")
+                ]])
             )
-            games[game_id]["message"] = sent
-            asyncio.create_task(start_timeout(client, game_id))
         except Exception:
             await message.reply("Invalid username or user not found.")
     else:
         await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
 
-#hemdel Move
+# Accept or Decline Challenge
+@Client.on_callback_query(filters.regex("^accept|decline"))
+async def handle_challenge_response(client, cb: CallbackQuery):
+    action, game_id = cb.data.split("|")
+    game_id = int(game_id)
+    user_id = cb.from_user.id
 
+    game = games.get(game_id)
+    if not game or game.get("status") != "pending":
+        return await cb.answer("Game not found or already started.", show_alert=True)
+
+    if user_id != game["player_o"]:
+        return await cb.answer("Only the challenged player can respond.", show_alert=True)
+
+    if action == "decline":
+        await cb.message.edit_text(f"{cb.from_user.mention} declined the game request.")
+        games.pop(game_id, None)
+        return
+
+    # Accept the challenge
+    board = [" "] * 9
+    game.update({
+        "board": board,
+        "turn": game["player_x"],
+        "vs_bot": False,
+        "status": "playing"
+    })
+
+    sent = await cb.message.reply(
+        f"{(await client.get_users(game['player_x'])).mention} vs {cb.from_user.mention}\n**Turn:** {(await client.get_users(game['player_x'])).mention}",
+        reply_markup=generate_board(board, game_id)
+    )
+    game["message"] = sent
+    await cb.message.delete()
+    asyncio.create_task(start_timeout(client, game_id))
+
+# Handle Moves
 @Client.on_callback_query(filters.regex("^move"))
 async def handle_move(client, cb: CallbackQuery):
     _, game_id, index = cb.data.split("|")
@@ -141,7 +183,7 @@ async def handle_move(client, cb: CallbackQuery):
     user_id = cb.from_user.id
 
     game = games.get(game_id)
-    if not game:
+    if not game or game.get("status") != "playing":
         return await cb.answer("Game not found or expired.", show_alert=True)
 
     board = game["board"]
@@ -192,7 +234,8 @@ async def handle_move(client, cb: CallbackQuery):
         reply_markup=generate_board(board, game_id)
     )
     asyncio.create_task(start_timeout(client, game_id))
-# Quit game
+
+# Quit Game
 @Client.on_callback_query(filters.regex("^quit"))
 async def quit_game(client, cb: CallbackQuery):
     _, game_id = cb.data.split("|")
@@ -219,7 +262,7 @@ async def quit_game(client, cb: CallbackQuery):
     await cb.message.edit_text(text)
     games.pop(game_id, None)
 
-# Ignore filler
+# Ignore Button
 @Client.on_callback_query(filters.regex("^ignore"))
 async def ignore(cb: CallbackQuery):
     await cb.answer()
