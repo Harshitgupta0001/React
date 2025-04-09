@@ -2,7 +2,7 @@ import requests
 from pyrogram import Client, filters, errors, types
 from config import Rkn_Bots, AUTH_CHANNEL
 import asyncio, re, time, sys, random
-from .database import total_user, getid, delete, addCap, updateCap, insert, chnl_ids
+from .database import total_user, getid, delete, addCap, updateCap, insert, chnl_idsfrom, save_game, get_game, delete_game
 from pyrogram.errors import *
 from pyrogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from utils import react_msg 
@@ -197,9 +197,6 @@ async def send_message_to_channel(bot, message):
         return
 
 
-# Game storage: key = game_id (message.id)
-games = {}
-
 # Generate game board
 def generate_board(board, game_id, include_quit=True):
     buttons = []
@@ -214,10 +211,8 @@ def generate_board(board, game_id, include_quit=True):
             else:
                 row.append(InlineKeyboardButton(display, callback_data="ignore"))
         buttons.append(row)
-
     if include_quit:
         buttons.append([InlineKeyboardButton("❌ Quit", callback_data=f"quit|{game_id}")])
-
     return InlineKeyboardMarkup(buttons)
 
 # Check winner or tie
@@ -233,7 +228,7 @@ def check_winner(board):
 # Timeout logic
 async def start_timeout(client, game_id, timeout=60):
     await asyncio.sleep(timeout)
-    game = games.get(game_id)
+    game = await get_game(game_id)
     if game and not game.get("winner"):
         turn = game["turn"]
         opponent_id = game["player_o"] if turn == game["player_x"] else game["player_x"]
@@ -243,7 +238,7 @@ async def start_timeout(client, game_id, timeout=60):
         except:
             msg = "**Timeout!** Player took too long.\nOpponent wins!"
         await game["message"].edit_text(msg)
-        games.pop(game_id, None)
+        await delete_game(game_id)
 
 def best_move(board):
     best_score = -float("inf")
@@ -260,33 +255,19 @@ def best_move(board):
 
 def minimax(board, depth, is_maximizing):
     winner = check_winner(board)
-    if winner == "O":
-        return 1
-    elif winner == "X":
-        return -1
-    elif " " not in board:
-        return 0
+    if winner == "O": return 1
+    if winner == "X": return -1
+    if " " not in board: return 0
 
-    if is_maximizing:
-        best_score = -float("inf")
-        for i in range(9):
-            if board[i] == " ":
-                board[i] = "O"
-                score = minimax(board, depth + 1, False)
-                board[i] = " "
-                best_score = max(score, best_score)
-        return best_score
-    else:
-        best_score = float("inf")
-        for i in range(9):
-            if board[i] == " ":
-                board[i] = "X"
-                score = minimax(board, depth + 1, True)
-                board[i] = " "
-                best_score = min(score, best_score)
-        return best_score
-            
-# Start game
+    best_score = -float("inf") if is_maximizing else float("inf")
+    for i in range(9):
+        if board[i] == " ":
+            board[i] = "O" if is_maximizing else "X"
+            score = minimax(board, depth + 1, not is_maximizing)
+            board[i] = " "
+            best_score = max(score, best_score) if is_maximizing else min(score, best_score)
+    return best_score
+
 @Client.on_message(filters.command("tictactoe"))
 async def start_game(client, message: Message):
     user1 = message.from_user.id
@@ -295,15 +276,16 @@ async def start_game(client, message: Message):
     game_id = message.id
 
     if message.chat.type == "private" or len(message.command) == 1:
-        games[game_id] = {
-            "chat_id": chat_id, "player_x": user1, "player_o": 0,
+        data = {
+            "_id": game_id, "chat_id": chat_id, "player_x": user1, "player_o": 0,
             "turn": user1, "vs_bot": True, "board": board
         }
         sent = await message.reply(
             f"**You vs Bot**\n**Turn:** {message.from_user.mention}",
             reply_markup=generate_board(board, game_id)
         )
-        games[game_id]["message"] = sent
+        data["message"] = sent
+        await save_game(game_id, data)
         asyncio.create_task(start_timeout(client, game_id))
 
     elif len(message.command) == 2:
@@ -311,22 +293,21 @@ async def start_game(client, message: Message):
             user2 = (await client.get_users(message.command[1])).id
             if user1 == user2:
                 return await message.reply("You can't play with yourself.")
-            games[game_id] = {
-                "chat_id": chat_id, "player_x": user1, "player_o": user2,
+            data = {
+                "_id": game_id, "chat_id": chat_id, "player_x": user1, "player_o": user2,
                 "turn": user1, "vs_bot": False, "board": board
             }
             sent = await message.reply(
                 f"{message.from_user.mention} vs {message.command[1]}\n**Turn:** {message.from_user.mention}",
                 reply_markup=generate_board(board, game_id)
             )
-            games[game_id]["message"] = sent
+            data["message"] = sent
+            await save_game(game_id, data)
             asyncio.create_task(start_timeout(client, game_id))
         except Exception:
             await message.reply("Invalid username or user not found.")
     else:
         await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
-
-#hemdel Move
 
 @Client.on_callback_query(filters.regex("^move"))
 async def handle_move(client, cb: CallbackQuery):
@@ -335,7 +316,7 @@ async def handle_move(client, cb: CallbackQuery):
     index = int(index)
     user_id = cb.from_user.id
 
-    game = games.get(game_id)
+    game = await get_game(game_id)
     if not game:
         return await cb.answer("Game not found or expired.", show_alert=True)
 
@@ -347,24 +328,18 @@ async def handle_move(client, cb: CallbackQuery):
 
     if turn != user_id:
         return await cb.answer("Not your turn!", show_alert=True)
-
     if board[index] != " ":
         return await cb.answer("Already taken!", show_alert=True)
 
     mark = "X" if user_id == player_x else "O"
     board[index] = mark
-
     winner = check_winner(board)
+
     if winner:
         game["winner"] = True
-        if winner == "tie":
-            text = "**Match Draw!**"
-        elif is_bot and winner == "O":
-            text = "**Bot wins!**"
-        else:
-            text = f"**Winner:** {cb.from_user.mention}"
+        text = "**Match Draw!**" if winner == "tie" else ("**Bot wins!**" if is_bot and winner == "O" else f"**Winner:** {cb.from_user.mention}")
         await cb.message.edit_text(text)
-        games.pop(game_id, None)
+        await delete_game(game_id)
         return
 
     if is_bot:
@@ -375,7 +350,7 @@ async def handle_move(client, cb: CallbackQuery):
         if winner:
             text = "**Match Draw!**" if winner == "tie" else "**Bot wins!**"
             await cb.message.edit_text(text)
-            games.pop(game_id, None)
+            await delete_game(game_id)
             return
         game["turn"] = player_x
     else:
@@ -386,22 +361,23 @@ async def handle_move(client, cb: CallbackQuery):
         f"**Turn:** {turn_user}",
         reply_markup=generate_board(board, game_id)
     )
+    await save_game(game_id, game)
     asyncio.create_task(start_timeout(client, game_id))
-# Quit game
+
 @Client.on_callback_query(filters.regex("^quit"))
 async def quit_game(client, cb: CallbackQuery):
     _, game_id = cb.data.split("|")
     game_id = int(game_id)
     user_id = cb.from_user.id
 
-    game = games.get(game_id)
+    game = await get_game(game_id)
     if not game:
         return await cb.answer("Game not found or expired.", show_alert=True)
 
     player_x = game["player_x"]
     player_o = game["player_o"]
 
-    if user_id != player_x and user_id != player_o:
+    if user_id not in [player_x, player_o]:
         return await cb.answer("You're not part of this game.", show_alert=True)
 
     opponent_id = player_o if user_id == player_x else player_x
@@ -412,15 +388,9 @@ async def quit_game(client, cb: CallbackQuery):
         text = f"**{cb.from_user.mention} quit the game!**\nOpponent wins!"
 
     await cb.message.edit_text(text)
-    games.pop(game_id, None)
+    await delete_game(game_id)
 
-# Ignore filler
 @Client.on_callback_query(filters.regex("^ignore"))
 async def ignore(cb: CallbackQuery):
-    await cb.answer()                
+    await cb.answer()
 
-#--------- react.py-------
-
-@Client.on_message(filters.all)
-async def send_reaction(bot, message):
-    await react_msg(bot, message)
