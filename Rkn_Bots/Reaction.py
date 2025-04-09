@@ -427,146 +427,149 @@ async def ignore(cb: CallbackQuery):
 
 
 
-CHOICES = ["🪨 Rock", "📄 Paper", "✂️ Scissors"]
 
-def rps_keyboard(game_id, user_id):
-    buttons = [
-        [InlineKeyboardButton(choice, callback_data=f"rps_move|{game_id}|{user_id}|{i}")]
-        for i, choice in enumerate(CHOICES)
-    ]
-    buttons.append([InlineKeyboardButton("❌ Quit", callback_data=f"rps_quit|{game_id}")])
-    return InlineKeyboardMarkup(buttons)
 
-def result(p1_choice, p2_choice):
-    if p1_choice == p2_choice:
-        return "tie"
-    if (p1_choice == 0 and p2_choice == 2) or (p1_choice == 1 and p2_choice == 0) or (p1_choice == 2 and p2_choice == 1):
-        return "p1"
-    return "p2"
-
+# Start RPS Game
 @Client.on_message(filters.command("rps"))
-async def rps_command(client, message: Message):
+async def start_rps(client, message: Message):
     user1 = message.from_user.id
     chat_id = message.chat.id
-    game_id = message.id  # Use integer ID
 
     if len(message.command) == 1 or message.chat.type == "private":
-        # PvBot Mode
+        game_id = message.id
         games[game_id] = {
+            "chat_id": chat_id,
             "player1": user1,
             "player2": 0,
-            "move1": None,
-            "move2": None,
-            "vs_bot": True,
-            "message": None
+            "p1_choice": None,
+            "p2_choice": None,
+            "vs_bot": True
         }
-        msg = await message.reply("**You vs Bot!**\nChoose your move:", reply_markup=rps_keyboard(game_id, user1))
-        games[game_id]["message"] = msg
+        markup = InlineKeyboardMarkup([
+            [InlineKeyboardButton("Rock", callback_data=f"rps|{game_id}|rock")],
+            [InlineKeyboardButton("Paper", callback_data=f"rps|{game_id}|paper")],
+            [InlineKeyboardButton("Scissors", callback_data=f"rps|{game_id}|scissors")],
+            [InlineKeyboardButton("❌ Quit", callback_data=f"rps_quit|{game_id}")]
+        ])
+        await message.reply("**Rock Paper Scissors vs Bot**\nChoose your move:", reply_markup=markup)
+
     elif len(message.command) == 2:
         try:
             user2 = (await client.get_users(message.command[1])).id
             if user1 == user2:
-                return await message.reply("You can't challenge yourself.")
+                return await message.reply("You can't play with yourself.")
+
+            game_id = message.id
             games[game_id] = {
+                "chat_id": chat_id,
                 "player1": user1,
                 "player2": user2,
-                "move1": None,
-                "move2": None,
-                "vs_bot": False,
-                "status": "pending",
-                "message": None
+                "p1_choice": None,
+                "p2_choice": None,
+                "vs_bot": False
             }
-            keyboard = InlineKeyboardMarkup([
-                [
-                    InlineKeyboardButton("✅ Accept", callback_data=f"rps_accept|{game_id}"),
-                    InlineKeyboardButton("❌ Decline", callback_data=f"rps_decline|{game_id}")
-                ]
-            ])
-            await message.reply(
-                f"{message.command[1]}, you’ve been challenged by {message.from_user.mention} to a game of Rock Paper Scissors!",
-                reply_markup=keyboard
-            )
-        except:
-            await message.reply("Invalid username.")
 
+            markup = InlineKeyboardMarkup([
+                [InlineKeyboardButton("Accept", callback_data=f"rps_accept|{game_id}")],
+                [InlineKeyboardButton("Decline", callback_data=f"rps_decline|{game_id}")]
+            ])
+            await message.reply(f"{message.from_user.mention} challenged {message.command[1]} to Rock Paper Scissors!", reply_markup=markup)
+        except Exception:
+            await message.reply("Invalid username or user not found.")
+
+# Accept challenge
 @Client.on_callback_query(filters.regex("^rps_accept"))
-async def accept_game(client, cb: CallbackQuery):
+async def rps_accept(client, cb: CallbackQuery):
     _, game_id = cb.data.split("|")
     game_id = int(game_id)
+
     game = games.get(game_id)
     if not game or cb.from_user.id != game["player2"]:
-        return await cb.answer("You can't accept this game.", show_alert=True)
+        return await cb.answer("You're not the challenged player.", show_alert=True)
 
-    msg = await cb.message.edit_text(
-        f"{cb.from_user.mention} accepted the challenge!\nBoth players, make your move:",
-        reply_markup=rps_keyboard(game_id, game["player1"])
-    )
-    games[game_id]["message"] = msg
+    markup = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Rock", callback_data=f"rps|{game_id}|rock")],
+        [InlineKeyboardButton("Paper", callback_data=f"rps|{game_id}|paper")],
+        [InlineKeyboardButton("Scissors", callback_data=f"rps|{game_id}|scissors")],
+        [InlineKeyboardButton("❌ Quit", callback_data=f"rps_quit|{game_id}")]
+    ])
+    await cb.message.edit_text("**Both players joined!**\nChoose your moves privately!")
+    await client.send_message(game["player1"], f"Choose your move for RPS game {game_id}:", reply_markup=markup)
+    await client.send_message(game["player2"], f"Choose your move for RPS game {game_id}:", reply_markup=markup)
 
+# Decline challenge
 @Client.on_callback_query(filters.regex("^rps_decline"))
-async def decline_game(client, cb: CallbackQuery):
+async def rps_decline(_, cb: CallbackQuery):
     _, game_id = cb.data.split("|")
     game_id = int(game_id)
-    game = games.pop(game_id, None)
-    if game:
-        await cb.message.edit_text("Challenge was declined.")
+    await cb.message.edit_text("Challenge was declined.")
+    games.pop(game_id, None)
 
-@Client.on_callback_query(filters.regex("^rps_quit"))
-async def quit_game(client, cb: CallbackQuery):
-    _, game_id = cb.data.split("|")
+# Handle moves
+@Client.on_callback_query(filters.regex("^rps\|"))
+async def handle_rps(client, cb: CallbackQuery):
+    _, game_id, move = cb.data.split("|")
     game_id = int(game_id)
-    game = games.pop(game_id, None)
-    if game:
-        await cb.message.edit_text("Game was quit.")
-
-@Client.on_callback_query(filters.regex("^rps_move"))
-async def handle_move(client, cb: CallbackQuery):
-    _, game_id, user_id, move = cb.data.split("|")
-    game_id = int(game_id)
-    user_id = int(user_id)
-    move = int(move)
+    user_id = cb.from_user.id
 
     game = games.get(game_id)
-    if not game or user_id != cb.from_user.id:
-        return await cb.answer("Invalid move or not your game.", show_alert=True)
-
-    if user_id == game["player1"]:
-        if game["move1"] is not None:
-            return await cb.answer("Move already made.")
-        game["move1"] = move
-    elif user_id == game["player2"]:
-        if game["move2"] is not None:
-            return await cb.answer("Move already made.")
-        game["move2"] = move
-
-    await cb.answer("Move selected.")
+    if not game:
+        return await cb.answer("Game not found or expired.", show_alert=True)
 
     if game["vs_bot"]:
-        game["move2"] = random.randint(0, 2)
-        winner = result(game["move1"], game["move2"])
-        if winner == "tie":
-            text = "🤝 It's a Tie!"
-        elif winner == "p1":
-            text = f"**You Win!** {CHOICES[game['move1']]} beats {CHOICES[game['move2']]}"
-        else:
-            text = f"**Bot Wins!** {CHOICES[game['move2']]} beats {CHOICES[game['move1']]}"
+        if user_id != game["player1"]:
+            return await cb.answer("Not your game!", show_alert=True)
+        game["p1_choice"] = move
+        game["p2_choice"] = random.choice(["rock", "paper", "scissors"])
+        result = determine_winner(game["p1_choice"], game["p2_choice"])
+        text = f"**You:** {game['p1_choice'].capitalize()}\n**Bot:** {game['p2_choice'].capitalize()}\n\n"
+        text += result_text(result, cb.from_user.mention, "Bot")
         await cb.message.edit_text(text)
         games.pop(game_id, None)
-    elif game["move1"] is not None and game["move2"] is not None:
-        winner = result(game["move1"], game["move2"])
-        p1_name = (await client.get_users(game["player1"])).mention
-        p2_name = (await client.get_users(game["player2"])).mention
-
-        if winner == "tie":
-            text = f"🤝 It's a Tie!\n{CHOICES[game['move1']]} vs {CHOICES[game['move2']]}"
-        elif winner == "p1":
-            text = f"🏆 {p1_name} wins!\n{CHOICES[game['move1']]} beats {CHOICES[game['move2']]}"
+    else:
+        if user_id == game["player1"]:
+            game["p1_choice"] = move
+            await cb.answer("You selected your move.")
+        elif user_id == game["player2"]:
+            game["p2_choice"] = move
+            await cb.answer("You selected your move.")
         else:
-            text = f"🏆 {p2_name} wins!\n{CHOICES[game['move2']]} beats {CHOICES[game['move1']]}"
+            return await cb.answer("Not your game!", show_alert=True)
 
-        await cb.message.edit_text(text)
+        if game["p1_choice"] and game["p2_choice"]:
+            result = determine_winner(game["p1_choice"], game["p2_choice"])
+            p1 = (await client.get_users(game["player1"])).mention
+            p2 = (await client.get_users(game["player2"])).mention
+            text = f"**{p1}:** {game['p1_choice'].capitalize()}\n**{p2}:** {game['p2_choice'].capitalize()}\n\n"
+            text += result_text(result, p1, p2)
+            await cb.message.edit_text(text)
+            games.pop(game_id, None)
+
+# Quit RPS game
+@Client.on_callback_query(filters.regex("^rps_quit"))
+async def rps_quit(_, cb: CallbackQuery):
+    _, game_id = cb.data.split("|")
+    game_id = int(game_id)
+    if game_id in games:
+        await cb.message.edit_text(f"{cb.from_user.mention} quit the game!")
         games.pop(game_id, None)
 
+# Game logic
+def determine_winner(p1, p2):
+    if p1 == p2:
+        return "draw"
+    elif (p1 == "rock" and p2 == "scissors") or (p1 == "paper" and p2 == "rock") or (p1 == "scissors" and p2 == "paper"):
+        return "p1"
+    else:
+        return "p2"
+
+def result_text(result, p1, p2):
+    if result == "draw":
+        return "**It's a draw!**"
+    elif result == "p1":
+        return f"**Winner:** {p1}"
+    else:
+        return f"**Winner:** {p2}"
 
 #--------- react.py-------
 
