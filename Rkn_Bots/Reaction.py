@@ -320,7 +320,7 @@ async def start_game(client, message: Message):
             games[game_id]["message"] = sent
             asyncio.create_task(start_timeout(client, game_id))
         except Exception:
-            await message.reply("Invalid username or user not found.")
+            await message.reply(f"Invalid username or user not found.\n {e}")
     else:
         await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
 
