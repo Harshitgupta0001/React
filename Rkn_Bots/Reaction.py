@@ -290,9 +290,9 @@ async def start_game(client, message: Message):
     user1 = message.from_user.id
     chat_id = message.chat.id
     board = [" "] * 9
-    game_id = message.id
 
     if message.chat.type == "private" or len(message.command) == 1:
+        game_id = message.id
         games[game_id] = {
             "chat_id": chat_id, "player_x": user1, "player_o": 0,
             "turn": user1, "vs_bot": True, "board": board
@@ -305,38 +305,40 @@ async def start_game(client, message: Message):
         asyncio.create_task(start_timeout(client, game_id))
 
     elif len(message.command) == 2:
-    try:
-        user2 = (await client.get_users(message.command[1])).id
-        if user1 == user2:
-            return await message.reply("You can't play with yourself.")
+        try:
+            user2 = (await client.get_users(message.command[1])).id
+            if user1 == user2:
+                return await message.reply("You can't play with yourself.")
 
-        import uuid
-        game_id = uuid.uuid4().hex
-        board = [" "] * 9
+            import uuid
+            game_id = uuid.uuid4().hex
+            board = [" "] * 9
 
-        games[game_id] = {
-            "chat_id": chat_id,
-            "player_x": user1,
-            "player_o": user2,
-            "turn": user1,
-            "vs_bot": False,
-            "board": board,
-            "status": "pending"
-        }
+            games[game_id] = {
+                "chat_id": chat_id,
+                "player_x": user1,
+                "player_o": user2,
+                "turn": user1,
+                "vs_bot": False,
+                "board": board,
+                "status": "pending"
+            }
 
-        keyboard = InlineKeyboardMarkup([
-            [
-                InlineKeyboardButton("✅ Accept", callback_data=f"accept|{game_id}"),
-                InlineKeyboardButton("❌ Decline", callback_data=f"decline|{game_id}")
-            ]
-        ])
+            keyboard = InlineKeyboardMarkup([
+                [
+                    InlineKeyboardButton("✅ Accept", callback_data=f"accept|{game_id}"),
+                    InlineKeyboardButton("❌ Decline", callback_data=f"decline|{game_id}")
+                ]
+            ])
 
-        await message.reply(
-            f"{message.command[1]}, you’ve been challenged by {message.from_user.mention} to a game of **Tic Tac Toe**!",
-            reply_markup=keyboard
-        )
-    except Exception:
-        await message.reply("Invalid username or user not found.") 
+            await message.reply(
+                f"{message.command[1]}, you’ve been challenged by {message.from_user.mention} to a game of **Tic Tac Toe**!",
+                reply_markup=keyboard
+            )
+        except Exception:
+            await message.reply("Invalid username or user not found.")
+    else:
+        await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
 # Handle move
 @Client.on_callback_query(filters.regex("^move"))
 async def handle_move(client, cb: CallbackQuery):
