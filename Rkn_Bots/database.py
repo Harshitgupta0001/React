@@ -1,9 +1,3 @@
-# (c) @RknDeveloperr
-# Rkn Developer 
-# Don't Remove Credit 😔
-# Telegram Channel @RknDeveloper & @Rkn_Bots
-# Developer @RknDeveloperr
-
 import motor.motor_asyncio
 from config import Rkn_Bots
 
@@ -11,6 +5,18 @@ client = motor.motor_asyncio.AsyncIOMotorClient(Rkn_Bots.DB_URL)
 db = client[Rkn_Bots.DB_NAME]
 chnl_ids = db.chnl_ids
 users = db.users
+
+games = db.games  # Create a new collection
+
+async def save_game(game_id, game_data):
+    await games.update_one({"_id": game_id}, {"$set": game_data}, upsert=True)
+
+async def get_game(game_id):
+    return await games.find_one({"_id": game_id})
+
+async def delete_game(game_id):
+    await games.delete_one({"_id": game_id})
+
 
 #insert user data
 async def insert(user_id):
