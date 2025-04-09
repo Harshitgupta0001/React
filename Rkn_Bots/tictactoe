@@ -1,0 +1,108 @@
+from pyrogram import Client, filters
+from pyrogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
+import random
+
+# In-memory game storage
+games = {}
+
+# Generate game board
+def generate_board(board, chat_id, player_x, player_o):
+    buttons = []
+    for i in range(3):
+        row = []
+        for j in range(3):
+            index = i * 3 + j
+            cell = board[index]
+            if cell == " ":
+                row.append(InlineKeyboardButton("➖", callback_data=f"move|{chat_id}|{index}|{player_x}|{player_o}"))
+            else:
+                row.append(InlineKeyboardButton(cell, callback_data="ignore"))
+        buttons.append(row)
+    return InlineKeyboardMarkup(buttons)
+
+# Check win or tie
+def check_winner(board):
+    combos = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
+    for x, y, z in combos:
+        if board[x] == board[y] == board[z] and board[x] != " ":
+            return board[x]
+    if " " not in board:
+        return "tie"
+    return None
+
+# Start game
+@Client.on_message(filters.command("tictactoe"))
+async def start_game(client, message: Message):
+    user1 = message.from_user.id
+    chat_id = message.chat.id
+    board = [" "] * 9
+
+    if message.chat.type == "private" or len(message.command) == 1:
+        # vs Bot
+        games[(chat_id, user1)] = {"board": board, "turn": user1, "vs_bot": True}
+        await message.reply("You vs Bot\nYou are X", reply_markup=generate_board(board, chat_id, user1, 0))
+    elif len(message.command) == 2:
+        try:
+            user2 = (await client.get_users(message.command[1])).id
+            if user1 == user2:
+                return await message.reply("You can't play with yourself.")
+            games[(chat_id, user1)] = {"board": board, "turn": user1, "vs_bot": False, "opponent": user2}
+            await message.reply(f"{message.from_user.mention} vs {message.command[1]}", reply_markup=generate_board(board, chat_id, user1, user2))
+        except Exception as e:
+            await message.reply("Invalid username or user not found.")
+    else:
+        await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
+
+# Handle moves
+@Client.on_callback_query(filters.regex("^move"))
+async def handle_move(client, cb: CallbackQuery):
+    _, chat_id, index, player_x, player_o = cb.data.split("|")
+    chat_id = int(chat_id)
+    index = int(index)
+    player_x = int(player_x)
+    player_o = int(player_o)
+    user_id = cb.from_user.id
+
+    game = games.get((chat_id, player_x))
+    if not game:
+        return await cb.answer("Game not found or expired.", show_alert=True)
+
+    board = game["board"]
+    turn = game["turn"]
+    is_bot = game["vs_bot"]
+
+    if turn != user_id:
+        return await cb.answer("Not your turn!", show_alert=True)
+
+    if board[index] != " ":
+        return await cb.answer("Already taken!", show_alert=True)
+
+    mark = "X" if user_id == player_x else "O"
+    board[index] = mark
+
+    winner = check_winner(board)
+    if winner:
+        text = "It's a tie!" if winner == "tie" else f"**{cb.from_user.first_name} wins!**"
+        await cb.message.edit_text(text, reply_markup=generate_board(board, chat_id, player_x, player_o))
+        games.pop((chat_id, player_x), None)
+        return
+
+    if is_bot:
+        game["turn"] = 0
+        bot_move = random.choice([i for i, c in enumerate(board) if c == " "])
+        board[bot_move] = "O"
+        winner = check_winner(board)
+        if winner:
+            text = "It's a tie!" if winner == "tie" else "**Bot wins!**"
+            await cb.message.edit_text(text, reply_markup=generate_board(board, chat_id, player_x, player_o))
+            games.pop((chat_id, player_x), None)
+            return
+        game["turn"] = player_x
+    else:
+        game["turn"] = player_o if turn == player_x else player_x
+
+    await cb.message.edit_reply_markup(reply_markup=generate_board(board, chat_id, player_x, player_o))
+
+@Client.on_callback_query(filters.regex("^ignore"))
+async def ignore(cb: CallbackQuery):
+    await cb.answer()
