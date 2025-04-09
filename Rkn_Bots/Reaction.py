@@ -4,7 +4,7 @@ from config import Rkn_Bots, AUTH_CHANNEL
 import asyncio, re, time, sys, random
 from .database import total_user, getid, delete, addCap, updateCap, insert, chnl_ids
 from pyrogram.errors import *
-from pyrogram.types import *
+from pyrogram.types import InlineKeyboardButton, InlineKeyboardMarkup, CallbackQuery
 from utils import react_msg 
 from Script import script
 
