@@ -198,112 +198,166 @@ async def send_message_to_channel(bot, message):
 
 
 
-
-# In-memory game storage
+# Game data storage
 games = {}
 
-# Generate game board
-def generate_board(board, chat_id, player_x, player_o):
-    buttons = []
-    for i in range(3):
-        row = []
-        for j in range(3):
-            index = i * 3 + j
-            cell = board[index]
-            if cell == " ":
-                row.append(InlineKeyboardButton("➖", callback_data=f"move|{chat_id}|{index}|{player_x}|{player_o}"))
-            else:
-                row.append(InlineKeyboardButton(cell, callback_data="ignore"))
-        buttons.append(row)
-    return InlineKeyboardMarkup(buttons)
+# Emoji for cells
+symbols = {
+    "X": "❌",
+    "O": "⭕",
+    " ": "➖"
+}
 
-# Check win or tie
-def check_winner(board):
-    combos = [(0,1,2),(3,4,5),(6,7,8),(0,3,6),(1,4,7),(2,5,8),(0,4,8),(2,4,6)]
-    for x, y, z in combos:
-        if board[x] == board[y] == board[z] and board[x] != " ":
-            return board[x]
+def render_board(board):
+    return [
+        [
+            InlineKeyboardButton(symbols[board[i * 3 + j]], callback_data=f"move:{i * 3 + j}")
+            for j in range(3)
+        ] for i in range(3)
+    ]
+
+def check_win(board):
+    wins = [
+        [0,1,2],[3,4,5],[6,7,8], # rows
+        [0,3,6],[1,4,7],[2,5,8], # columns
+        [0,4,8],[2,4,6]          # diagonals
+    ]
+    for line in wins:
+        a, b, c = line
+        if board[a] == board[b] == board[c] and board[a] != " ":
+            return board[a]
     if " " not in board:
         return "tie"
     return None
 
-# Start game
-@Client.on_message(filters.command("tictactoe"))
+@Client.on_message(filters.command("tictactoe") & filters.group)
 async def start_game(client, message: Message):
-    user1 = message.from_user.id
-    chat_id = message.chat.id
-    board = [" "] * 9
+    if message.reply_to_message:
+        player1 = message.from_user
+        player2 = message.reply_to_message.from_user
+        board = [" "] * 9
+        game_id = message.chat.id
 
-    if message.chat.type == "private" or len(message.command) == 1:
-        # vs Bot
-        games[(chat_id, user1)] = {"board": board, "turn": user1, "vs_bot": True}
-        await message.reply("You vs Bot\nYou are X", reply_markup=generate_board(board, chat_id, user1, 0))
-    elif len(message.command) == 2:
-        try:
-            user2 = (await client.get_users(message.command[1])).id
-            if user1 == user2:
-                return await message.reply("You can't play with yourself.")
-            games[(chat_id, user1)] = {"board": board, "turn": user1, "vs_bot": False, "opponent": user2}
-            await message.reply(f"{message.from_user.mention} vs {message.command[1]}", reply_markup=generate_board(board, chat_id, user1, user2))
-        except Exception as e:
-            await message.reply("Invalid username or user not found.")
+        games[game_id] = {
+            "board": board,
+            "players": [player1.id, player2.id],
+            "turn": 0,
+            "msg_id": None
+        }
+
+        board_markup = InlineKeyboardMarkup(render_board(board))
+        msg = await message.reply(f"Tic Tac Toe Game!\n{player1.mention} ❌ vs {player2.mention} ⭕\nTurn: {player1.mention}", reply_markup=board_markup)
+        games[game_id]["msg_id"] = msg.message_id
     else:
-        await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
+        await message.reply("Reply to someone to start a game!")
 
-# Handle moves
-@Client.on_callback_query(filters.regex("^move"))
-async def handle_move(client, cb: CallbackQuery):
-    _, chat_id, index, player_x, player_o = cb.data.split("|")
-    chat_id = int(chat_id)
-    index = int(index)
-    player_x = int(player_x)
-    player_o = int(player_o)
-    user_id = cb.from_user.id
+@Client.on_callback_query(filters.regex("move"))
+async def handle_move(client, callback_query: CallbackQuery):
+    data = callback_query.data.split(":")
+    index = int(data[1])
+    chat_id = callback_query.message.chat.id
+    game = games.get(chat_id)
 
-    game = games.get((chat_id, player_x))
     if not game:
-        return await cb.answer("Game not found or expired.", show_alert=True)
-
-    board = game["board"]
-    turn = game["turn"]
-    is_bot = game["vs_bot"]
-
-    if turn != user_id:
-        return await cb.answer("Not your turn!", show_alert=True)
-
-    if board[index] != " ":
-        return await cb.answer("Already taken!", show_alert=True)
-
-    mark = "X" if user_id == player_x else "O"
-    board[index] = mark
-
-    winner = check_winner(board)
-    if winner:
-        text = "It's a tie!" if winner == "tie" else f"**{cb.from_user.first_name} wins!**"
-        await cb.message.edit_text(text, reply_markup=generate_board(board, chat_id, player_x, player_o))
-        games.pop((chat_id, player_x), None)
+        await callback_query.answer("No game running!")
         return
 
-    if is_bot:
-        game["turn"] = 0
-        bot_move = random.choice([i for i, c in enumerate(board) if c == " "])
-        board[bot_move] = "O"
-        winner = check_winner(board)
-        if winner:
-            text = "It's a tie!" if winner == "tie" else "**Bot wins!**"
-            await cb.message.edit_text(text, reply_markup=generate_board(board, chat_id, player_x, player_o))
-            games.pop((chat_id, player_x), None)
-            return
-        game["turn"] = player_x
+    board = game["board"]
+    user_id = callback_query.from_user.id
+    turn = game["turn"]
+    player1, player2 = game["players"]
+
+    if user_id != game["players"][turn]:
+        await callback_query.answer("Not your turn!", show_alert=False)
+        player_mention = (await client.get_users(game["players"][turn])).mention
+        await callback_query.message.edit_text(
+            f"**Tic Tac Toe Game**\nIt's {player_mention}'s turn!",
+            reply_markup=InlineKeyboardMarkup(render_board(board))
+        )
+        return
+
+    if board[index] != " ":
+        await callback_query.answer("Cell already taken!", show_alert=False)
+        return
+
+    board[index] = "X" if turn == 0 else "O"
+    winner = check_win(board)
+
+    if winner:
+        del games[chat_id]
+        board_markup = InlineKeyboardMarkup(render_board(board))
+        if winner == "tie":
+            await callback_query.message.edit_text(
+                "Match Drawn!\nNo one wins.",
+                reply_markup=board_markup
+            )
+        else:
+            winner_id = player1 if winner == "X" else player2
+            winner_mention = (await client.get_users(winner_id)).mention
+            await callback_query.message.edit_text(
+                f"Game Over!\nWinner: {winner_mention}",
+                reply_markup=board_markup
+            )
+        await callback_query.message.reply(
+            "Game finished! Want a rematch?",
+            reply_markup=InlineKeyboardMarkup([[
+                InlineKeyboardButton("♻️ Rematch", callback_data="rematch")
+            ]])
+        )
     else:
-        game["turn"] = player_o if turn == player_x else player_x
+        game["turn"] = 1 - turn
+        player_mention = (await client.get_users(game["players"][game["turn"]])).mention
+        await callback_query.message.edit_text(
+            f"Tic Tac Toe Game!\nTurn: {player_mention}",
+            reply_markup=InlineKeyboardMarkup(render_board(board))
+        )
 
-    await cb.message.edit_reply_markup(reply_markup=generate_board(board, chat_id, player_x, player_o))
+@Client.on_callback_query(filters.regex("rematch"))
+async def rematch_game(client, callback_query: CallbackQuery):
+    chat_id = callback_query.message.chat.id
+    player1 = callback_query.from_user
+    previous_game = callback_query.message.reply_to_message
 
-@Client.on_callback_query(filters.regex("^ignore"))
-async def ignore(cb: CallbackQuery):
-    await cb.answer()
-                
+    if not previous_game:
+        await callback_query.answer("Can't start rematch.", show_alert=True)
+        return
+
+    # Attempt to extract both players from previous board message
+    lines = previous_game.text.splitlines()
+    try:
+        p1_mention = lines[1].split(" vs ")[0]
+        p2_mention = lines[1].split(" vs ")[1]
+    except:
+        await callback_query.answer("Failed to fetch players.", show_alert=True)
+        return
+
+    # You could store players better; here we reuse original player
+    # Use callback_query.from_user and previous_game.reply_to_message.from_user
+    if previous_game.reply_to_message:
+        player2 = previous_game.reply_to_message.from_user
+    else:
+        await callback_query.answer("Original player not found.", show_alert=True)
+        return
+
+    board = [" "] * 9
+    game_id = chat_id
+    games[game_id] = {
+        "board": board,
+        "players": [player1.id, player2.id],
+        "turn": 0,
+        "msg_id": None
+    }
+
+    board_markup = InlineKeyboardMarkup(render_board(board))
+    msg = await callback_query.message.reply(
+        f"Tic Tac Toe Rematch!\n{player1.mention} ❌ vs {player2.mention} ⭕\nTurn: {player1.mention}",
+        reply_markup=board_markup
+    )
+    games[game_id]["msg_id"] = msg.message_id
+    await callback_query.answer("Rematch started!")
+
+
+                 
 
 #--------- react.py-------
 
