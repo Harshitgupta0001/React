@@ -197,7 +197,6 @@ async def send_message_to_channel(bot, message):
         return
 
 
-
 # Game storage: key = game_id (message.id)
 games = {}
 
@@ -227,6 +226,21 @@ def check_winner(board):
     if " " not in board:
         return "tie"
     return None
+
+# Timeout logic
+async def start_timeout(client, game_id, timeout=60):
+    await asyncio.sleep(timeout)
+    game = games.get(game_id)
+    if game and not game.get("winner"):
+        turn = game["turn"]
+        opponent_id = game["player_o"] if turn == game["player_x"] else game["player_x"]
+        try:
+            opponent = await client.get_users(opponent_id)
+            msg = f"**Timeout!** <a href='tg://user?id={turn}'>Player</a> took too long.\n**Winner:** {opponent.mention}"
+        except:
+            msg = "**Timeout!** Player took too long.\nOpponent wins!"
+        await game["message"].edit_text(msg)
+        games.pop(game_id, None)
 
 def best_move(board):
     best_score = -float("inf")
@@ -268,31 +282,16 @@ def minimax(board, depth, is_maximizing):
                 board[i] = " "
                 best_score = min(score, best_score)
         return best_score
-
-# Timeout logic
-async def start_timeout(client, game_id, timeout=60):
-    await asyncio.sleep(timeout)
-    game = games.get(game_id)
-    if game and not game.get("winner"):
-        turn = game["turn"]
-        opponent_id = game["player_o"] if turn == game["player_x"] else game["player_x"]
-        try:
-            opponent = await client.get_users(opponent_id)
-            msg = f"**Timeout!** <a href='tg://user?id={turn}'>Player</a> took too long.\n**Winner:** {opponent.mention}"
-        except:
-            msg = "**Timeout!** Player took too long.\nOpponent wins!"
-        await game["message"].edit_text(msg)
-        games.pop(game_id, None)
-
+            
 # Start game
 @Client.on_message(filters.command("tictactoe"))
 async def start_game(client, message: Message):
     user1 = message.from_user.id
     chat_id = message.chat.id
     board = [" "] * 9
+    game_id = message.id
 
     if message.chat.type == "private" or len(message.command) == 1:
-        game_id = message.id
         games[game_id] = {
             "chat_id": chat_id, "player_x": user1, "player_o": 0,
             "turn": user1, "vs_bot": True, "board": board
@@ -320,12 +319,12 @@ async def start_game(client, message: Message):
             games[game_id]["message"] = sent
             asyncio.create_task(start_timeout(client, game_id))
         except Exception:
-            await message.reply(f"Invalid username or user not found.\n {e}")
+            await message.reply("Invalid username or user not found.")
     else:
         await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
 
+#hemdel Move
 
-# Handle move
 @Client.on_callback_query(filters.regex("^move"))
 async def handle_move(client, cb: CallbackQuery):
     _, game_id, index = cb.data.split("|")
@@ -385,8 +384,6 @@ async def handle_move(client, cb: CallbackQuery):
         reply_markup=generate_board(board, game_id)
     )
     asyncio.create_task(start_timeout(client, game_id))
-
-
 # Quit game
 @Client.on_callback_query(filters.regex("^quit"))
 async def quit_game(client, cb: CallbackQuery):
@@ -417,9 +414,7 @@ async def quit_game(client, cb: CallbackQuery):
 # Ignore filler
 @Client.on_callback_query(filters.regex("^ignore"))
 async def ignore(cb: CallbackQuery):
-    await cb.answer()
-
-                 
+    await cb.answer()                
 
 #--------- react.py-------
 
