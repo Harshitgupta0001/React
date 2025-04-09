@@ -497,7 +497,7 @@ async def accept_rps(client, cb: CallbackQuery):
     game["status"] = "active"
 
     await cb.message.edit_text(
-        f"Game started!\nBoth players, choose your moves.",
+        f"Game started!\nBoth players, choose your moves. In bot pm of u not start the bot 1st start and again challenge ",
         reply_markup=None
     )
 
@@ -507,9 +507,9 @@ async def accept_rps(client, cb: CallbackQuery):
                 player,
                 "Choose your move:",
                 reply_markup=InlineKeyboardMarkup([
-                    [InlineKeyboardButton("🪨 Rock", callback_data=f"rps|{game_id}|rock"),
-                     InlineKeyboardButton("📄 Paper", callback_data=f"rps|{game_id}|paper"),
-                     InlineKeyboardButton("✂️ Scissors", callback_data=f"rps|{game_id}|scissors")]
+                    [InlineKeyboardButton("🪨 ", callback_data=f"rps|{game_id}|rock"),
+                     InlineKeyboardButton("📄 ", callback_data=f"rps|{game_id}|paper"),
+                     InlineKeyboardButton("✂️ ", callback_data=f"rps|{game_id}|scissors")]
                 ])
             )
         except:
@@ -540,7 +540,7 @@ async def make_move(client, cb: CallbackQuery):
         bot_move = random.choice(rps_options)
         result = get_result(move, bot_move)
         user_mention = cb.from_user.mention
-        text = f"**You chose:** {emojis[move]}\n**Bot chose:** {emojis[bot_move]}\n\n"
+        text = f"**You chose:** {emojis[move]}\n\n**Bot chose:** {emojis[bot_move]}\n\n"
 
         if result == "draw":
             text += "**It's a draw!**"
