@@ -420,3 +420,11 @@ async def quit_game(client, cb: CallbackQuery):
 @Client.on_callback_query(filters.regex("^ignore"))
 async def ignore(cb: CallbackQuery):
     await cb.answer()
+
+
+
+#--------- react.py-------
+
+@Client.on_message(filters.all)
+async def send_reaction(bot, message):
+    await react_msg(bot, message)
