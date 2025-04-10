@@ -55,3 +55,7 @@ class script(object):
 </b>
 
 <b><blockquote><code>Maintained By</code> <a href='https://t.me/hgbotz'><code>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</code></a></blockquote></b>"""
+
+    GAMES_TXT = """"<blockquote>🎮 Available Mini Games</blockquote>
+    <b>There are many Fun Games With Multi Player Support Just Make me  Admin in ur Group Or see below Buttons</b>
+    <b><blockquote><code>Maintained By</code> <a href='https://t.me/hgbotz'><code>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</code></a></blockquote></b>"""
