@@ -42,7 +42,6 @@ class script(object):
 ◉ Single Player (Play vs Bot) Use /tictactoe
 ◉ Multi Player (Challenge a Friend) Make admin in group and do /tictactoe @username or reply that user with /tictactoe for challenge
 </b>
-
 <b><blockquote>Maintained By <a href='https://t.me/hgbotz'>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</a></blockquote></b>"""
 
     RPS_TXT = """<b>𝚁𝚘𝚌𝚔 𝙿𝚊𝚙𝚎𝚛 𝚂𝚌𝚒𝚜𝚜𝚘𝚛𝚜 ✂️📄🪨</b>
