@@ -212,7 +212,7 @@ async def rps_callback(client, callback_query: CallbackQuery):
 @Client.on_callback_query(filters.regex('dice'))
 async def dice_callback(client, callback_query: CallbackQuery):
     await callback_query.answer()  # Acknowledge the callback
-    await callback_query.message.edit_text(text=script.dice_TXT, reply_markup=InlineKeyboardMarkup(back_button))
+    await callback_query.message.edit_text(text=script.DICE_TXT, reply_markup=InlineKeyboardMarkup(back_button))
 
 
 @Client.on_message(filters.private & filters.user(Rkn_Bots.ADMIN) & filters.command(["msg"]))
