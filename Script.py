@@ -35,26 +35,25 @@ class script(object):
 
 
     TTT_TXT = """<b><code>𝚃𝚒𝚌 𝚃𝚊𝚌 𝚃𝚘𝚎 ✖️◯</code></b>
-<code>A Classic Strategy Game Made Fun With Inline Buttons!</code>
+<b>A Classic Strategy Game Made Fun With Inline Buttons!</b>
 
-<b><blockquote><code>Game Modes:</code></blockquote></b>
+<b><blockquote>Game Modes:</blockquote></b>
 <b>
-<code>◉ Single Player (Play vs Bot) Use /tictactoe</code><br>
-<code>◉ Multi Player (Challenge a Friend) Make admin in group and do /tictactoe @username or reply that user with /tictactoe for challenge</code>
+◉ Single Player (Play vs Bot) Use /tictactoe
+◉ Multi Player (Challenge a Friend) Make admin in group and do /tictactoe @username or reply that user with /tictactoe for challenge
 </b>
 
-<b><blockquote><code>Maintained By</code> <a href='https://t.me/hgbotz'><code>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</code></a></blockquote></b>"""
+<b><blockquote>Maintained By <a href='https://t.me/hgbotz'>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</a></blockquote></b>"""
 
-    RPS_TXT = """<b><code>𝚁𝚘𝚌𝚔 𝙿𝚊𝚙𝚎𝚛 𝚂𝚌𝚒𝚜𝚜𝚘𝚛𝚜 ✂️📄🪨</code></b>
-<code>Fast-Paced Classic With Fun Twist!</code>
+    RPS_TXT = """<b>𝚁𝚘𝚌𝚔 𝙿𝚊𝚙𝚎𝚛 𝚂𝚌𝚒𝚜𝚜𝚘𝚛𝚜 ✂️📄🪨</b>
+Fast-Paced Classic With Fun Twist!
 
-<b><blockquote><code>Game Modes:</code></blockquote></b>
+<b><blockquote>Game Modes:</blockquote></b>
 <b>
-<code>◉ Single Player (Play vs Bot) Use /rps</code><br>
-<code>◉ Multi Player (Challenge a Friend) Make admin in group and do /rps @username or reply that user with /rps for challenge</code>
+◉ Single Player (Play vs Bot) Use /rps
+◉ Multi Player (Challenge a Friend) Make admin in group and do /rps @username or reply that user with /rps for challenge
 </b>
-
-<b><blockquote><code>Maintained By</code> <a href='https://t.me/hgbotz'><code>𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</code></a></blockquote></b>"""
+<b><blockquote>Maintained By<a href='https://t.me/hgbotz'> 𝙷𝙶𝙱𝙾𝚃ᶻ 🦋</a></blockquote></b>"""
 
     GAMES_TXT = """"<blockquote>🎮 Available Mini Games</blockquote>
     <b>There are many Fun Games With Multi Player Support Just Make me  Admin in ur Group Or see below Buttons</b>
