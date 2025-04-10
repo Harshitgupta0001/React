@@ -292,7 +292,7 @@ def minimax(board, depth, is_maximizing):
 @Client.on_message(filters.command("tictactoe"))
 async def start_game(client, message: Message):
     if message.sender_chat:
-    return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
+        return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
     user1 = message.from_user.id
     chat_id = message.chat.id
     board = [" "] * 9
@@ -480,7 +480,7 @@ def get_result(p1, p2):
 @Client.on_message(filters.command("rps"))
 async def rps_start(client, message: Message):
     if message.sender_chat:
-    return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
+        return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
 
     user1 = message.from_user.id
     chat_id = message.chat.id
