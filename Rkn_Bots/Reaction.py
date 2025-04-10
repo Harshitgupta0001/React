@@ -291,6 +291,8 @@ def minimax(board, depth, is_maximizing):
 # Start game
 @Client.on_message(filters.command("tictactoe"))
 async def start_game(client, message: Message):
+    if message.sender_chat:
+    return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
     user1 = message.from_user.id
     chat_id = message.chat.id
     board = [" "] * 9
@@ -477,6 +479,9 @@ def get_result(p1, p2):
 
 @Client.on_message(filters.command("rps"))
 async def rps_start(client, message: Message):
+    if message.sender_chat:
+    return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
+
     user1 = message.from_user.id
     chat_id = message.chat.id
     game_id = message.id
@@ -492,9 +497,9 @@ async def rps_start(client, message: Message):
         await message.reply(
             "**Rock Paper Scissors**\nYou're playing vs Bot.\nChoose your move:",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🪨 Rock", callback_data=f"rps|{game_id}|rock"),
-                 InlineKeyboardButton("📄 Paper", callback_data=f"rps|{game_id}|paper"),
-                 InlineKeyboardButton("✂️ Scissors", callback_data=f"rps|{game_id}|scissors")]
+                [InlineKeyboardButton("🪨 ", callback_data=f"rps|{game_id}|rock"),
+                 InlineKeyboardButton("📄 ", callback_data=f"rps|{game_id}|paper"),
+                 InlineKeyboardButton("✂️ ", callback_data=f"rps|{game_id}|scissors")]
             ])
         )
 
