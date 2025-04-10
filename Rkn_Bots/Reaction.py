@@ -13,14 +13,11 @@ games = {}
 
 buttons = [[
         InlineKeyboardButton('✇ Uᴘᴅᴀᴛᴇs ✇', url="https://t.me/HGBOTZ"),
-        InlineKeyboardButton('✨ 𝙲𝙾𝙽𝚃𝙰𝙲𝚃 ✨', url="https://t.me/Harshit_contact_bot")
+        InlineKeyboardButton('🦋 about', callback_data='about')
     ],[
-        InlineKeyboardButton('〄 Add to me group 〄', url="https://t.me/Reaction_99bot?startgroup=botstart")
+        InlineKeyboardButton('〄 Add to me group 〄', url="https://t.me/Reaction_99bot?startgroup&admin=post_messages+edit_messages+delete_messages")
     ],[
-        InlineKeyboardButton('ˣ 𝙰𝙳𝙳 𝙼𝙴 𝚃𝙾 𝚈𝙾𝚄𝚁 𝙲𝙷𝙰𝙽𝙽𝙴𝙻 ˣ', url='https://t.me/Reaction_99bot?startchannel&admin=post_messages+edit_messages+delete_messages'),
-    ],[
-        InlineKeyboardButton('❗️ʜᴇʟᴘ', callback_data='help'), 
-        InlineKeyboardButton('🦋 𝙰𝙱𝙾𝚄𝚃', callback_data='about')
+        InlineKeyboardButton('🎮 games', callback_data='games')
     ]]
 
 group_buttons = [[InlineKeyboardButton('✇ Click To Start Me ✇', url="http://t.me/Reaction_99bot?start=True")
@@ -36,10 +33,21 @@ back_button = [[
                  InlineKeyboardButton('🔙 back', callback_data='back')
               ]]
 
+games_buttons = [[        
+        InlineKeyboardButton('🎮 TIC TAC TOE', callback_data='ttt') 
+        ],[
+        InlineKeyboardButton('🎮 Rock paper scissor', callback_data='rps')
+        ],[
+        InlineKeyboardButton('More Timepaas 😂', callback_data='dice')
+        ],[
+        InlineKeyboardButton('🙂 𝐎𝐖𝐍𝐄𝐑', url='https://t.me/Harshit_contact_bot'), 
+        InlineKeyboardButton('BACK 🔙', callback_data='back')
+        ]]
+
 about_buttons = [[
         InlineKeyboardButton('🙂 𝐎𝐖𝐍𝐄𝐑', url='https://t.me/Harshit_contact_bot')
         ],[
-        InlineKeyboardButton('❗️ʜᴇʟᴘ', callback_data='help'), 
+        InlineKeyboardButton('🎮 games', callback_data='games'), 
         InlineKeyboardButton('🦋 𝙷𝙾𝙼𝙴', callback_data='back')
         ],[
         InlineKeyboardButton('📜 sᴜᴘᴘᴏʀᴛ ɢʀᴏᴜᴘ', url='https://t.me/HGBOTZ_support'),
@@ -176,10 +184,10 @@ async def roll_bowling(bot, message):
     await bot.send_dice(message.chat.id, "🎳")
 
 
-@Client.on_callback_query(filters.regex('help'))
-async def show_help_callback(client, callback_query: CallbackQuery):
+@Client.on_callback_query(filters.regex('games'))
+async def show_games_callback(client, callback_query: CallbackQuery):
     await callback_query.answer()  # Acknowledge the callback
-    await callback_query.message.edit_text(text=script.HELP_TXT, reply_markup=InlineKeyboardMarkup(back_button))
+    await callback_query.message.edit_text(text=script.games_TXT, reply_markup=InlineKeyboardMarkup(games_button))
 
 @Client.on_callback_query(filters.regex('back'))
 async def back_callback(client, callback_query: CallbackQuery):
@@ -190,6 +198,22 @@ async def back_callback(client, callback_query: CallbackQuery):
 async def about_callback(client, callback_query: CallbackQuery):
     await callback_query.answer()# Acknowledge the callback
     await callback_query.message.edit_text(text=script.ABOUT_TXT, reply_markup=InlineKeyboardMarkup(about_buttons))
+
+@Client.on_callback_query(filters.regex('ttt'))
+async def ttt_callback(client, callback_query: CallbackQuery):
+    await callback_query.answer()  # Acknowledge the callback
+    await callback_query.message.edit_text(text=script.TTT_TXT, reply_markup=InlineKeyboardMarkup(back_button))
+
+@Client.on_callback_query(filters.regex('rps'))
+async def rps_callback(client, callback_query: CallbackQuery):
+    await callback_query.answer()  # Acknowledge the callback
+    await callback_query.message.edit_text(text=script.RPS_TXT, reply_markup=InlineKeyboardMarkup(back_button))
+
+@Client.on_callback_query(filters.regex('dice'))
+async def dice_callback(client, callback_query: CallbackQuery):
+    await callback_query.answer()  # Acknowledge the callback
+    await callback_query.message.edit_text(text=script.dice_TXT, reply_markup=InlineKeyboardMarkup(back_button))
+
 
 @Client.on_message(filters.private & filters.user(Rkn_Bots.ADMIN) & filters.command(["msg"]))
 async def send_message_to_channel(bot, message):
