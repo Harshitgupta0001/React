@@ -185,9 +185,9 @@ async def roll_bowling(bot, message):
 
 
 @Client.on_callback_query(filters.regex('games'))
-async def show_games_callback(client, callback_query: CallbackQuery):
+async def games_callback(client, callback_query: CallbackQuery):
     await callback_query.answer()  # Acknowledge the callback
-    await callback_query.message.edit_text(text=script.games_TXT, reply_markup=InlineKeyboardMarkup(games_button))
+    await callback_query.message.edit_text(text=script.GAMES_TXT, reply_markup=InlineKeyboardMarkup(games_button))
 
 @Client.on_callback_query(filters.regex('back'))
 async def back_callback(client, callback_query: CallbackQuery):
