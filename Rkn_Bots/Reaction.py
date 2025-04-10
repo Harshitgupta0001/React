@@ -230,6 +230,8 @@ async def reaction_handler(client, cb: CallbackQuery):
     )
     await cb.message.edit_reply_markup(markup)
     await cb.answer("Thanks for reacting!")
+
+
 # Generate game board
 def generate_board(board, game_id, include_quit=True):
     buttons = []
@@ -274,6 +276,11 @@ async def start_timeout(client, game_id, timeout=60):
             msg = "**Timeout!** Player took too long.\nOpponent wins!"
         await game["message"].edit_text(msg)
         games.pop(game_id, None)
+
+
+async def cancel_timeout(game_id):
+    if game_id in games:
+        games[game_id]["status"] = "ended"
 
 # Bot move
 def best_move(board):
@@ -488,7 +495,8 @@ async def quit_game(client, cb: CallbackQuery):
         text = f"**{cb.from_user.mention} quit the game!**\nOpponent wins!"
     await edit_with_reactions(cb, text, game_id, add_reactions=True)
     #await cb.message.edit_text(text)
-    #games.pop(game_id, None)
+    #games.pop(game_id, None) 
+    await cancel_timeout(game_id)
 
 # Ignore Button
 @Client.on_callback_query(filters.regex("^ignore"))
