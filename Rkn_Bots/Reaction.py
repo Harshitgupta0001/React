@@ -687,7 +687,207 @@ async def make_move(client, cb: CallbackQuery):
 
             games.pop(game_id, None)
  
-        
+
+
+
+
+PIECES = {
+    "♚": 6,
+    "♛": 5,
+    "♜": 4,
+    "♝": 3,
+    "♞": 2,
+    "♟": 1
+}
+PIECE_LIST = list(PIECES.keys())
+
+def chessket_board(game_id):
+    return InlineKeyboardMarkup([
+        [InlineKeyboardButton(piece, callback_data=f"chessket|{game_id}|{piece}") for piece in PIECE_LIST[:3]],
+        [InlineKeyboardButton(piece, callback_data=f"chessket|{game_id}|{piece}") for piece in PIECE_LIST[3:]],
+        [InlineKeyboardButton("Quit", callback_data=f"chessket_quit|{game_id}")]
+    ])
+
+async def start_timeout(client, game_id, timeout=60):
+    await asyncio.sleep(timeout)
+    game = games.get(game_id)
+    if game and not game.get("winner") and game.get("status") == "playing":
+        p1 = game["player1"]
+        p2 = game["player2"]
+        opponent = p2 if game["turn"] == p1 else p1
+        await game["message"].edit_text(
+            f"**Timeout!** <a href='tg://user?id={game['turn']}'>Player</a> took too long.\n**Winner:** <a href='tg://user?id={opponent}'>Opponent</a>"
+        )
+        games.pop(game_id, None)
+
+@Client.on_message(filters.command("chessket") & filters.group)
+async def chessket_start(client, message: Message):
+    if message.sender_chat:
+        return await message.reply("Anonymous admins can't play.")
+    user1 = message.from_user.id
+    chat_id = message.chat.id
+    game_id = message.id
+
+    if message.chat.type == "private" or len(message.command) == 1:
+        games[game_id] = {
+            "chat_id": chat_id,
+            "player1": user1,
+            "player2": "bot",
+            "scores": {user1: 0, "bot": 0},
+            "moves": {},
+            "round": 1,
+            "mode": "bot",
+            "status": "playing",
+            "turn": user1
+        }
+        msg = await message.reply(
+            f"**Chessket (Round 1/3)**\nYour turn: Choose a piece!",
+            reply_markup=chessket_board(game_id)
+        )
+        games[game_id]["message"] = msg
+        asyncio.create_task(start_timeout(client, game_id))
+
+    elif len(message.command) == 2 or message.reply_to_message:
+        try:
+            if message.reply_to_message:
+                opponent = message.reply_to_message.from_user
+            else:
+                opponent = await client.get_users(message.command[1])
+            user2 = opponent.id
+            if user1 == user2:
+                return await message.reply("You can't play with yourself.")
+
+            games[game_id] = {
+                "chat_id": chat_id,
+                "player1": user1,
+                "player2": user2,
+                "scores": {user1: 0, user2: 0},
+                "moves": {},
+                "round": 1,
+                "mode": "pvp",
+                "status": "pending"
+            }
+            await message.reply(
+                f"{message.from_user.mention} challenged {opponent.mention} to a game of Chessket!",
+                reply_markup=InlineKeyboardMarkup([[
+                    InlineKeyboardButton("✅ Accept", callback_data=f"chessket_accept|{game_id}"),
+                    InlineKeyboardButton("❌ Decline", callback_data=f"chessket_decline|{game_id}")
+                ]])
+            )
+        except:
+            await message.reply("User not found.")
+
+@Client.on_callback_query(filters.regex(r"^chessket_accept\|(\d+)"))
+async def chessket_accept(client, query: CallbackQuery):
+    game_id = int(query.data.split("|")[1])
+    game = games.get(game_id)
+    if not game or game["status"] != "pending":
+        return await query.answer("Game not found or already started.", show_alert=True)
+
+    if query.from_user.id != game["player2"]:
+        return await query.answer("You're not the challenged player.", show_alert=True)
+
+    game["status"] = "playing"
+    game["turn"] = game["player1"]
+    msg = await query.message.edit_text(
+        f"**Chessket (Round 1/3)**\n<a href='tg://user?id={game['turn']}'>Your turn</a>: Choose a piece!",
+        reply_markup=chessket_board(game_id)
+    )
+    game["message"] = msg
+    asyncio.create_task(start_timeout(client, game_id))
+
+@Client.on_callback_query(filters.regex(r"^chessket_decline\|(\d+)"))
+async def chessket_decline(client, query: CallbackQuery):
+    game_id = int(query.data.split("|")[1])
+    game = games.pop(game_id, None)
+    if game:
+        await query.message.edit_text("Challenge declined.")
+
+@Client.on_callback_query(filters.regex(r"^chessket\|(\d+)\|(.+)"))
+async def chessket_move(client, query: CallbackQuery):
+    game_id, piece = int(query.data.split("|")[1]), query.data.split("|")[2]
+    game = games.get(game_id)
+    if not game or game["status"] != "playing":
+        return await query.answer("Game not available.", show_alert=True)
+
+    player = query.from_user.id
+    if player not in [game["player1"], game["player2"]]:
+        return await query.answer("You're not in this game.", show_alert=True)
+
+    if game["mode"] == "pvp" and player != game["turn"]:
+        return await query.answer("Not your turn.", show_alert=True)
+
+    if player in game["moves"]:
+        return await query.answer("You've already played this round.", show_alert=True)
+
+    game["moves"][player] = piece
+    await query.answer("Move submitted.")
+
+    if game["mode"] == "bot":
+        bot_choice = random.choice(PIECE_LIST)
+        game["moves"]["bot"] = bot_choice
+    elif len(game["moves"]) < 2:
+        return  # Wait for second player
+
+    p1 = game["player1"]
+    p2 = game["player2"]
+    move1 = game["moves"][p1]
+    move2 = game["moves"][p2] if game["mode"] == "pvp" else game["moves"]["bot"]
+    pts1 = PIECES[move1]
+    pts2 = PIECES[move2]
+
+    if pts1 > pts2:
+        winner = p1
+    elif pts2 > pts1:
+        winner = p2 if game["mode"] == "pvp" else "bot"
+    else:
+        winner = None
+
+    if winner:
+        game["scores"][winner] += max(pts1, pts2)
+
+    result_text = (
+        f"**Round {game['round']}/3 Results**\n"
+        f"{move1} vs {move2}\n"
+        f"{'Draw!' if winner is None else f'Winner: <a href=\"tg://user?id={winner}\">Player</a>'}\n\n"
+        f"Score:\n"
+        f"<a href='tg://user?id={p1}'>Player 1</a>: {game['scores'][p1]}\n"
+        f"<a href='tg://user?id={p2}'>Player 2</a>: {game['scores'][p2] if game['mode']=='pvp' else game['scores']['bot']}"
+    )
+
+    game["round"] += 1
+    game["moves"] = {}
+
+    if game["round"] > 3:
+        game["status"] = "ended"
+        final = game["scores"]
+        score1 = final[p1]
+        score2 = final[p2] if game["mode"] == "pvp" else final["bot"]
+        if score1 > score2:
+            end_msg = f"\n\n**Game Over! Winner:** <a href='tg://user?id={p1}'>Player 1</a>"
+        elif score2 > score1:
+            end_msg = f"\n\n**Game Over! Winner:** <a href='tg://user?id={p2}'>Player 2</a>" if game["mode"] == "pvp" else "\n\n**Game Over! Bot wins!**"
+        else:
+            end_msg = "\n\n**Game Over! It's a draw!**"
+        result_text += end_msg
+        await game["message"].edit_text(result_text)
+        games.pop(game_id, None)
+    else:
+        game["turn"] = p1 if game["round"] % 2 else p2
+        await game["message"].edit_text(
+            f"{result_text}\n\n**Round {game['round']}/3**\n<a href='tg://user?id={game['turn']}'>Your turn</a>: Choose a piece!",
+            reply_markup=chessket_board(game_id)
+        )
+        asyncio.create_task(start_timeout(client, game_id))
+
+@Client.on_callback_query(filters.regex(r"^chessket_quit\|(\d+)"))
+async def chessket_quit(client, query: CallbackQuery):
+    game_id = int(query.data.split("|")[1])
+    game = games.pop(game_id, None)
+    if not game or game["status"] != "playing":
+        return await query.answer("Game not active.")
+    opponent = game["player2"] if query.from_user.id == game["player1"] else game["player1"]
+    await query.message.edit_text(f"<a href='tg://user?id={query.from_user.id}'>Player</a> quit the game.\nWinner: <a href='tg://user?id={opponent}'>Opponent</a>")
 #--------- react.py-------
 
 @Client.on_message(filters.all)
