@@ -36,7 +36,7 @@ back_button = [[
 games_buttons = [[        
         InlineKeyboardButton('🎮 TIC TAC TOE', callback_data='ttt') 
         ],[
-        InlineKeyboardButton('🎮 Rock paper scissor', callback_data='rps')
+        InlineKeyboardButton('🎮 Rock paper scissor', callback_data='sps')
         ],[
         InlineKeyboardButton('More Timepaas 😂', callback_data='dice')
         ],[
@@ -204,7 +204,7 @@ async def ttt_callback(client, callback_query: CallbackQuery):
     await callback_query.answer()  # Acknowledge the callback
     await callback_query.message.edit_text(text=script.TTT_TXT, reply_markup=InlineKeyboardMarkup(back_button))
 
-@Client.on_callback_query(filters.regex('rps'))
+@Client.on_callback_query(filters.regex('sps'))
 async def rps_callback(client, callback_query: CallbackQuery):
     await callback_query.answer()  # Acknowledge the callback
     await callback_query.message.edit_text(text=script.RPS_TXT, reply_markup=InlineKeyboardMarkup(back_button))
