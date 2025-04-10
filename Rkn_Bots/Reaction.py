@@ -200,7 +200,36 @@ async def send_message_to_channel(bot, message):
 
 
 
+# Optional: store reaction counts per game
+reaction_store = {}
 
+async def edit_with_reactions(cb, text, game_id, add_reactions=False):
+    if add_reactions:
+        reactions = ["❤️", "🥇", "🔥"]
+        markup = InlineKeyboardMarkup(
+            [[InlineKeyboardButton(f"{emoji} 0", callback_data=f"game_react|{game_id}|{emoji}") for emoji in reactions]]
+        )
+        await cb.message.edit_text(text, reply_markup=markup)
+        reaction_store[game_id] = {emoji: 0 for emoji in reactions}
+    else:
+        await cb.message.edit_text(text)
+
+
+@Client.on_callback_query(filters.regex("^game_react"))
+async def reaction_handler(client, cb: CallbackQuery):
+    _, game_id, emoji = cb.data.split("|")
+    game_id = int(game_id)
+
+    if game_id not in reaction_store:
+        return await cb.answer("Reaction expired.", show_alert=True)
+
+    reaction_store[game_id][emoji] += 1
+    counts = reaction_store[game_id]
+    markup = InlineKeyboardMarkup(
+        [[InlineKeyboardButton(f"{e} {counts[e]}", callback_data=f"game_react|{game_id}|{e}") for e in counts]]
+    )
+    await cb.message.edit_reply_markup(markup)
+    await cb.answer("Thanks for reacting!")
 # Generate game board
 def generate_board(board, game_id, include_quit=True):
     buttons = []
@@ -408,8 +437,8 @@ async def handle_move(client, cb: CallbackQuery):
             text = "**Bot wins! 💀**"
         else:
             text = f"**WOW Winner 🥇:** {cb.from_user.mention} 🔥"
-        await cb.message.edit_text(text)
-        games.pop(game_id, None)
+        await edit_with_reactions(cb, text, game_id, add_reactions=True)
+      #  games.pop(game_id, None)
         return
 
     if is_bot:
@@ -419,8 +448,9 @@ async def handle_move(client, cb: CallbackQuery):
         winner = check_winner(board)
         if winner:
             text = "**LOL 😂 Match Draw!**" if winner == "tie" else "**Bot wins! 💀**"
-            await cb.message.edit_text(text)
-            games.pop(game_id, None)
+            #await cb.message.edit_text(text)
+            #games.pop(game_id, None)
+            await edit_with_reactions(cb, text, game_id, add_reactions=True)
             return
         game["turn"] = player_x
     else:
@@ -456,9 +486,9 @@ async def quit_game(client, cb: CallbackQuery):
         text = f"**{cb.from_user.mention} quit the game!**\n**Winner:** {opponent.mention}"
     except:
         text = f"**{cb.from_user.mention} quit the game!**\nOpponent wins!"
-
-    await cb.message.edit_text(text)
-    games.pop(game_id, None)
+    await edit_with_reactions(cb, text, game_id, add_reactions=True)
+    #await cb.message.edit_text(text)
+    #games.pop(game_id, None)
 
 # Ignore Button
 @Client.on_callback_query(filters.regex("^ignore"))
