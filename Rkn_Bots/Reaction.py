@@ -846,10 +846,15 @@ async def chessket_move(client, query: CallbackQuery):
     if winner:
         game["scores"][winner] += max(pts1, pts2)
 
+    if winner is None:
+        winner_text = "Draw!"
+    else:
+        winner_text = f"Winner: <a href='tg://user?id={winner}'>Player</a>"
+
     result_text = (
         f"**Round {game['round']}/3 Results**\n"
         f"{move1} vs {move2}\n"
-        f"{'Draw!' if winner is None else f'Winner: <a href=\"tg://user?id={winner}\">Player</a>'}\n\n"
+        f"{winner_text}\n\n"
         f"Score:\n"
         f"<a href='tg://user?id={p1}'>Player 1</a>: {game['scores'][p1]}\n"
         f"<a href='tg://user?id={p2}'>Player 2</a>: {game['scores'][p2] if game['mode']=='pvp' else game['scores']['bot']}"
@@ -879,7 +884,7 @@ async def chessket_move(client, query: CallbackQuery):
             reply_markup=chessket_board(game_id)
         )
         asyncio.create_task(start_timeout(client, game_id))
-
+            
 @Client.on_callback_query(filters.regex(r"^chessket_quit\|(\d+)"))
 async def chessket_quit(client, query: CallbackQuery):
     game_id = int(query.data.split("|")[1])
