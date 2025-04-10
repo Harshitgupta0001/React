@@ -347,17 +347,13 @@ async def start_game(client, message: Message):
         games[game_id]["message"] = sent
         asyncio.create_task(start_timeout(client, game_id))
 
-    elif len(message.command) == 2 or message.reply_to_message:
+    elif len(message.command) == 2:
         try:
-            if message.reply_to_message:
-                opponent = message.reply_to_message.from_user
-            else:
-                opponent = await client.get_users(message.command[1])
-
+            opponent = await client.get_users(message.command[1])
             user2 = opponent.id
             if user1 == user2:
                 return await message.reply("You can't play with yourself.")
-        
+            
             games[game_id] = {
                 "chat_id": chat_id,
                 "player_x": user1,
@@ -367,12 +363,15 @@ async def start_game(client, message: Message):
             await message.reply(
                 f"{message.from_user.mention} challenged {opponent.mention} to a game of Tic Tac Toe!",
                 reply_markup=InlineKeyboardMarkup([[
-                InlineKeyboardButton("✅ Accept", callback_data=f"accept|{game_id}"),
-                InlineKeyboardButton("❌ Decline", callback_data=f"decline|{game_id}")
-            ]])
-        )
+                    InlineKeyboardButton("✅ Accept", callback_data=f"accept|{game_id}"),
+                    InlineKeyboardButton("❌ Decline", callback_data=f"decline|{game_id}")
+                ]])
+            )
         except Exception:
-            await message.reply("Invalid username or user not found .")
+            await message.reply("Invalid username or user not found.")
+    else:
+        await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
+
 # Accept or Decline Challenge
 @Client.on_callback_query(filters.regex("^accept|decline"))
 async def handle_challenge_response(client, cb: CallbackQuery):
