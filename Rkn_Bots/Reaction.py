@@ -348,11 +348,11 @@ async def start_game(client, message: Message):
         asyncio.create_task(start_timeout(client, game_id))
 
     elif len(message.command) == 2 or message.reply_to_message:
-    try:
-        if message.reply_to_message:
-            opponent = message.reply_to_message.from_user
-        else:
-            opponent = await client.get_users(message.command[1])
+        try:
+            if message.reply_to_message:
+                opponent = message.reply_to_message.from_user
+            else:
+                opponent = await client.get_users(message.command[1])
 
         user2 = opponent.id
         if user1 == user2:
