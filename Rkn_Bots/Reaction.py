@@ -325,16 +325,18 @@ def minimax(board, depth, is_maximizing):
         return best_score
 
 # Start game
-@Client.on_message(filters.command("tictactoe"))
+@Client.on_message(filters.command(["tictactoe", "ttt"]) & filters.group)
 async def start_game(client, message: Message):
     if message.sender_chat:
         return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
+
     user1 = message.from_user.id
     chat_id = message.chat.id
     board = [" "] * 9
     game_id = message.id
 
-    if message.chat.type == "private" or len(message.command) == 1:
+    # PvBot mode (private or no args)
+    if message.chat.type == "private" or (len(message.command) == 1 and not message.reply_to_message):
         games[game_id] = {
             "chat_id": chat_id, "player_x": user1, "player_o": 0,
             "turn": user1, "vs_bot": True, "board": board,
@@ -347,19 +349,25 @@ async def start_game(client, message: Message):
         games[game_id]["message"] = sent
         asyncio.create_task(start_timeout(client, game_id))
 
-    elif len(message.command) == 2:
+    # PvP mode (via reply or @username)
+    elif len(message.command) == 2 or message.reply_to_message:
         try:
-            opponent = await client.get_users(message.command[1])
+            if message.reply_to_message:
+                opponent = message.reply_to_message.from_user
+            else:
+                opponent = await client.get_users(message.command[1])
             user2 = opponent.id
+
             if user1 == user2:
                 return await message.reply("You can't play with yourself.")
-            
+
             games[game_id] = {
                 "chat_id": chat_id,
                 "player_x": user1,
                 "player_o": user2,
                 "status": "pending"
             }
+
             await message.reply(
                 f"{message.from_user.mention} challenged {opponent.mention} to a game of Tic Tac Toe!",
                 reply_markup=InlineKeyboardMarkup([[
@@ -369,9 +377,9 @@ async def start_game(client, message: Message):
             )
         except Exception:
             await message.reply("Invalid username or user not found.")
-    else:
-        await message.reply("Usage: `/tictactoe` or `/tictactoe @username`", quote=True)
 
+    else:
+        await message.reply("Usage: `/tictactoe`, `/tictactoe @username`, or reply to a user's message.", quote=True)
 # Accept or Decline Challenge
 @Client.on_callback_query(filters.regex("^accept|decline"))
 async def handle_challenge_response(client, cb: CallbackQuery):
@@ -515,7 +523,7 @@ def get_result(p1, p2):
         return "p1"
     return "p2"
 
-@Client.on_message(filters.command("rps"))
+@Client.on_message(filters.command(["rps", "sps"]) & filters.group)
 async def rps_start(client, message: Message):
     if message.sender_chat:
         return await message.reply("Anonymous admins can't play this game. Please switch to your personal account.")
@@ -535,18 +543,23 @@ async def rps_start(client, message: Message):
         await message.reply(
             "**Rock Paper Scissors**\nYou're playing vs Bot.\nChoose your move:",
             reply_markup=InlineKeyboardMarkup([
-                [InlineKeyboardButton("🪨 ", callback_data=f"rps|{game_id}|rock"),
-                 InlineKeyboardButton("📄 ", callback_data=f"rps|{game_id}|paper"),
-                 InlineKeyboardButton("✂️ ", callback_data=f"rps|{game_id}|scissors")]
+                [InlineKeyboardButton("🪨", callback_data=f"rps|{game_id}|rock"),
+                 InlineKeyboardButton("📄", callback_data=f"rps|{game_id}|paper"),
+                 InlineKeyboardButton("✂️", callback_data=f"rps|{game_id}|scissors")]
             ])
         )
 
-    elif len(message.command) == 2:
+    elif len(message.command) == 2 or message.reply_to_message:
         try:
-            opponent = await client.get_users(message.command[1])
+            if message.reply_to_message:
+                opponent = message.reply_to_message.from_user
+            else:
+                opponent = await client.get_users(message.command[1])
+
             user2 = opponent.id
             if user1 == user2:
                 return await message.reply("You can't challenge yourself.")
+
             games[game_id] = {
                 "chat_id": chat_id,
                 "player1": user1,
@@ -564,6 +577,7 @@ async def rps_start(client, message: Message):
             )
         except:
             await message.reply("User not found.")
+
 
 @Client.on_callback_query(filters.regex(r"^rps_accept\|"))
 async def accept_rps(client, cb: CallbackQuery):
