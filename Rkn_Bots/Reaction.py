@@ -532,7 +532,7 @@ async def rps_start(client, message: Message):
     chat_id = message.chat.id
     game_id = message.id
 
-    if message.chat.type == "private" or len(message.command) == 1:
+    if message.chat.type == "private" or (len(message.command) == 1 and not message.reply_to_message):
         games[game_id] = {
             "chat_id": chat_id,
             "player1": user1,
