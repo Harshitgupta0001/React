@@ -403,11 +403,11 @@ async def handle_move(client, cb: CallbackQuery):
     if winner:
         game["winner"] = True
         if winner == "tie":
-            text = "**Match Draw!**"
+            text = "**LOL 😂 Match Draw!**"
         elif is_bot and winner == "O":
-            text = "**Bot wins!**"
+            text = "**Bot wins! 💀**"
         else:
-            text = f"**Winner:** {cb.from_user.mention}"
+            text = f"**WOW Winner 🥇:** {cb.from_user.mention} 🔥"
         await cb.message.edit_text(text)
         games.pop(game_id, None)
         return
@@ -418,7 +418,7 @@ async def handle_move(client, cb: CallbackQuery):
         board[bot_move] = "O"
         winner = check_winner(board)
         if winner:
-            text = "**Match Draw!**" if winner == "tie" else "**Bot wins!**"
+            text = "**LOL 😂 Match Draw!**" if winner == "tie" else "**Bot wins! 💀**"
             await cb.message.edit_text(text)
             games.pop(game_id, None)
             return
