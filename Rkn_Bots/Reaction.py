@@ -535,7 +535,8 @@ async def rps_start(client, message: Message):
 
     elif len(message.command) == 2:
         try:
-            user2 = (await client.get_users(message.command[1])).id
+            opponent = await client.get_users(message.command[1])
+            user2 = opponent.id
             if user1 == user2:
                 return await message.reply("You can't challenge yourself.")
             games[game_id] = {
@@ -547,7 +548,7 @@ async def rps_start(client, message: Message):
                 "status": "pending"
             }
             await message.reply(
-                f"{message.from_user.mention} challenged {message.command[1]} to a game of Rock Paper Scissors!",
+                f"{message.from_user.mention} challenged {opponent.mention} to a game of Rock Paper Scissors!",
                 reply_markup=InlineKeyboardMarkup([
                     [InlineKeyboardButton("✅ Accept", callback_data=f"rps_accept|{game_id}"),
                      InlineKeyboardButton("❌ Decline", callback_data=f"rps_decline|{game_id}")]
