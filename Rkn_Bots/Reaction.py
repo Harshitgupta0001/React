@@ -471,11 +471,11 @@ async def handle_move(client, cb: CallbackQuery):
     if winner:
         game["winner"] = True
         if winner == "tie":
-            text = f"<b>{(await client.get_users(game['player_x'])).mention} vs {cb.from_user.mention}</b>\n\n**<blockquote>LOL 😂 Match Draw!</blockquote>**"
+            text = f"<b>{(await client.get_users(game['player_x'])).mention} vs {(await client.get_users(game['player_o'])).mention}</b>\n\n**<blockquote>LOL 😂 Match Draw!</blockquote>**"
         elif is_bot and winner == "O":
             text = "**Bot wins! 💀**"
         else:
-            text = f"**{(await client.get_users(game['player_x'])).mention} vs {cb.from_user.mention}**\n\n<blockquote>WOW Winner 🥇:** {cb.from_user.mention} 🔥</blockquote>"
+            text = f"**{(await client.get_users(game['player_x'])).mention} vs {(await client.get_users(game['player_o'])).mention}**\n\n<blockquote>WOW Winner 🥇:** {cb.from_user.mention} 🔥</blockquote>"
         await edit_with_reactions(cb, text, game_id, add_reactions=True)
       #  games.pop(game_id, None)
         return
@@ -486,7 +486,7 @@ async def handle_move(client, cb: CallbackQuery):
         board[bot_move] = "O"
         winner = check_winner(board)
         if winner:
-            text = "**LOL 😂 Match Draw!**" if winner == "tie" else "**Bot wins! 💀 {cb.from_user.mention} Noob 🤡**"
+            text = "**LOL 😂 Match Draw!**" if winner == "tie" else f"**Bot wins! 💀 {(await client.get_users(game['player_x'])).mention} Noob 🤡**"
             #await cb.message.edit_text(text)
             #games.pop(game_id, None)
             await edit_with_reactions(cb, text, game_id, add_reactions=True)
