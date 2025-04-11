@@ -471,7 +471,7 @@ async def handle_move(client, cb: CallbackQuery):
     if winner:
         game["winner"] = True
         if winner == "tie":
-            text = f"<b>{(await client.get_users(game['player_x'])).mention} vs {(await client.get_users(game['player_o'])).mention}</b>\n\n**<blockquote>LOL 😂 Match Draw!</blockquote>**"
+            text = f" LOL 😂 Match Draw!**"
         elif is_bot and winner == "O":
             text = "**Bot wins! 💀**"
         else:
