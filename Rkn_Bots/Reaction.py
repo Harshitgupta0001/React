@@ -264,7 +264,7 @@ def generate_board(board, game_id, include_quit=True):
         for j in range(3):
             index = i * 3 + j
             cell = board[index]
-            display = {"X": "❌", "O": "⭕", " ": "➖"}[cell]
+            display = {"X": "❌", "O": "⭕", " ": "⬜"}[cell]
             if cell == " ":
                 row.append(InlineKeyboardButton(display, callback_data=f"move|{game_id}|{index}"))
             else:
@@ -272,7 +272,7 @@ def generate_board(board, game_id, include_quit=True):
         buttons.append(row)
 
     if include_quit:
-        buttons.append([InlineKeyboardButton("❌ Quit", callback_data=f"quit|{game_id}")])
+        buttons.append([InlineKeyboardButton("📤 Quit", callback_data=f"quit|{game_id}")])
 
     return InlineKeyboardMarkup(buttons)
 
